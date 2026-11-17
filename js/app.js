@@ -22,6 +22,18 @@ let wakeLock = null;
 
 T.setSound(db.sound);
 
+// Erscheinungsbild: 'system' | 'light' | 'dark'. Kopie in localStorage für das Inline-Skript im <head> (kein Aufblitzen).
+function applyTheme() {
+  const t = db.theme || 'system';
+  if (t === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('flow.theme', t); } catch {}
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim();
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
 // ── Hilfen ────────────────────────────────────────────────
 const equipNames = (ex) => ex.equip.length ? ex.equip.map((id) => EQUIPMENT.find((e) => e.id === id).name).join(' + ') : 'Ohne Geräte';
 const planById = (id) => db.plans.find((p) => p.id === id);
@@ -86,7 +98,39 @@ const icon = {
   pause: '<svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>',
   stop: '<svg viewBox="0 0 24 24"><rect class="fill" x="7" y="7" width="10" height="10" rx="1.5"/></svg>',
   rest: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 2M10 3.5h4"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>',
+  bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg>',
+  bellOff: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></svg>',
 };
+
+// TODO(Design): Platzhalter-Signet – echtes Line-Art-Logo (meditierende Figur über fließender Form) fehlt noch (DESIGN.md §9).
+// Farbvarianten über currentColor: .logo (forest), .logo.rose, .logo.white
+const LOGO = `<span class="logo" role="img" aria-label="flow.training"><svg viewBox="0 0 32 32">
+  <circle cx="16" cy="7.5" r="2.6"/><path d="M16 11v6.5M10.5 15l5.5 2.5 5.5-2.5M9 21.5c3-2.4 11-2.4 14 0"/>
+  <path d="M4 26c3.5-2.6 6.5 1.6 10 0s6.5-2.4 9.5-.4 4.5 1.2 4.5 1.2"/></svg></span>`;
+
+// Florale Line-Art in Rosé – nur auf Leer- und Erfolgs-Screens
+const LEAF = `<span class="leaf" aria-hidden="true"><svg viewBox="0 0 64 64">
+  <path d="M32 58C32 42 30 28 22 14"/><path d="M27 34c-8 1-14-3-16-10 7-1 13 2 16 10z"/><path d="M30 46c7-2 13 0 16 6-7 2-13 0-16-6z"/>
+  <path d="M24 22c6-3 7-10 4-15-5 3-7 9-4 15z"/><path d="M31 32c6-4 13-3 17 2-6 4-13 3-17-2z"/></svg></span>`;
+
+const SIGNATURES = [
+  'Dein Zyklus. Deine Stärke.',
+  'Trainiere mit deinem Körper, nicht gegen ihn.',
+  'Anpassung – nicht Verzicht.',
+  'Kraft ist mehr als Optik.',
+  'Regeneration ist kein Trainingsausfall. Sie ist Teil des Trainings.',
+];
+
+// AppHeader: Titel links, Signet rechts, dünne Linie darunter
+const header = (title, back) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
+  <div class="head-row"><h1>${esc(title)}</h1>${LOGO}</div></header>`;
+const pill = (t) => `<h2 class="pill-label">${t}</h2>`;
+const empty = (line, sub = '', cta = '') => `<div class="empty">${LEAF}<p class="serif">${line}</p>${sub ? `<p>${sub}</p>` : ''}${cta}</div>`;
+const circleFig = (ex, cls = "") => `<div class="ic-circle ${cls}">${figureStatic(ex, true)}</div>`;
 
 // ── Router ────────────────────────────────────────────────
 const route = () => (location.hash.slice(2) || 'katalog').split('/').map(decodeURIComponent);
@@ -129,16 +173,12 @@ const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene',
 // ── Katalog ───────────────────────────────────────────────
 function viewCatalog(pickFor) {
   const plan = pickFor && planById(pickFor);
-  const head = plan
-    ? `<header class="top"><a class="back" href="#/plan/${plan.id}">${icon.back}${esc(plan.name)}</a><h1>Übung hinzufügen</h1></header>`
-    : `<header class="top"><h1>Übungen</h1></header>`;
+  const head = plan ? header('Übung hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
   return `${head}
-    <input class="search" type="search" id="q" placeholder="Suchen …" value="${esc(catQuery)}" autocomplete="off">
-    <div class="filter">
-      <div class="filter-label">Meine Geräte <button class="link" data-act="equip-all">${db.equip.length ? 'keine' : 'alle'}</button></div>
-      <div class="chips">${EQUIPMENT.map((e) => `<button class="chip ${db.equip.includes(e.id) ? 'on' : ''}" data-act="equip" data-id="${e.id}">${e.name}</button>`).join('')}</div>
-    </div>
-    <div id="list" class="grid"></div>`;
+    <input class="search" type="search" id="q" placeholder="Übung suchen" value="${esc(catQuery)}" autocomplete="off">
+    <div class="filter-label"><p class="overline">Meine Ausrüstung</p><button class="link" data-act="equip-all">${db.equip.length ? 'keine' : 'alle'}</button></div>
+    <div class="chips">${EQUIPMENT.map((e) => `<button class="chip ${db.equip.includes(e.id) ? 'on' : ''}" data-act="equip" data-id="${e.id}" aria-pressed="${db.equip.includes(e.id)}">${e.name}</button>`).join('')}</div>
+    <div id="list" class="ilist"></div>`;
 }
 
 function renderCatalogList(pickFor) {
@@ -146,35 +186,48 @@ function renderCatalogList(pickFor) {
   const list = EXERCISES.filter((ex) => ex.equip.every((e) => db.equip.includes(e)))
     .filter((ex) => !q || (ex.name + ' ' + ex.muscles).toLowerCase().includes(q));
   const el = $('#list');
-  if (!list.length) { el.innerHTML = '<p class="empty">Keine passende Übung. Mehr Geräte auswählen?</p>'; return; }
+  if (!list.length) { el.innerHTML = empty('Keine passende Übung.', 'Wähl mehr Ausrüstung aus oder ändere die Suche.'); return; }
   el.innerHTML = list.map((ex) => `
-    <a class="card" href="${pickFor ? '#' : '#/uebung/' + ex.id}" ${pickFor ? `data-act="pick" data-plan="${pickFor}" data-ex="${ex.id}"` : ''}>
-      <div class="thumb">${figureStatic(ex)}</div>
-      <div class="card-text"><b>${esc(ex.name)}</b><small>${esc(ex.muscles)}</small>
-      <span class="tag">${equipNames(ex)}${ex.mode === 'time' ? ' · Zeit' : ''}</span></div>
+    <a class="ilist-item" href="${pickFor ? '#' : '#/uebung/' + ex.id}" ${pickFor ? `data-act="pick" data-plan="${pickFor}" data-ex="${ex.id}"` : ''}>
+      ${circleFig(ex)}
+      <div class="ilist-text"><b>${esc(ex.name)}</b><small>${esc(ex.muscles)}</small>
+      <span class="badge">${equipNames(ex)}${ex.mode === 'time' ? ' · Zeit' : ''}</span></div>
+      <span class="chev">${pickFor ? icon.plus : icon.chev}</span>
     </a>`).join('');
+}
+
+// Beschreibung → erster Satz als Hinweis, Rest als Checkliste
+function splitDesc(desc) {
+  const s = desc.match(/[^.!?]+[.!?]+/g)?.map((x) => x.trim()) || [desc];
+  return { lead: s[0], points: s.slice(1) };
 }
 
 function viewExercise(id) {
   const ex = byId[id];
-  if (!ex) return '<p class="empty">Übung nicht gefunden.</p>';
+  if (!ex) return header('Übung') + empty('Diese Übung gibt es nicht (mehr).');
   const last = lastFor(id);
-  return `<header class="top"><a class="back" href="#/katalog">${icon.back}Übungen</a><h1>${esc(ex.name)}</h1></header>
-    <div class="fig-lg" data-anim="${ex.id}"></div>
-    <div class="tags"><span class="tag">${equipNames(ex)}</span><span class="tag">${ex.mode === 'time' ? 'Auf Zeit' : 'Wiederholungen'}</span></div>
-    <p class="muscles">${esc(ex.muscles)}</p>
-    <p class="desc">${esc(ex.desc)}</p>
-    ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span>Verlauf ›</span></a>` : ''}
-    <h2>Zu Plan hinzufügen</h2>
+  const { lead, points } = splitDesc(ex.desc);
+  return header(ex.name, ['#/katalog', 'Übungen']) + `
+    <div class="fig-hero" data-anim="${ex.id}"></div>
+    <p class="overline">${esc(ex.muscles)}</p>
+    <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${ex.mode === 'time' ? 'Auf Zeit' : 'Wiederholungen'}</span></div>
+    <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(lead)}</p></div></div>
+    ${points.length ? pill('Worauf ich achte') + `<ul class="checklist">${points.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
+    ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
+    ${pill('Zu Plan hinzufügen')}
     <div class="stack">
-      ${db.plans.map((p) => `<button class="btn" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">+ ${esc(p.name)}</button>`).join('')}
-      <button class="btn ghost" data-act="add-to-new" data-ex="${ex.id}">+ Neuer Plan</button>
+      ${db.plans.map((p) => `<button class="btn" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">${icon.plus}${esc(p.name)}</button>`).join('')}
+      <button class="btn ghost" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}Neuer Plan</button>
     </div>`;
 }
 
 // ── Pläne ─────────────────────────────────────────────────
 function viewPlans() {
-  return `<header class="top"><h1>Pläne</h1></header>
+  if (!db.plans.length) {
+    return header('Pläne') + empty('Noch kein Training geplant.', 'Starte mit deinem Körper, nicht gegen ihn.',
+      `<button class="btn primary" data-act="new-plan">${icon.plus}Ersten Plan anlegen</button>`);
+  }
+  return header('Pläne') + `
     <div class="stack">
     ${db.plans.map((p) => {
       const { n, s } = planEstimate(p);
@@ -185,27 +238,27 @@ function viewPlans() {
           <button class="btn" data-act="dup-plan" data-plan="${p.id}">Kopieren</button>
           <button class="btn danger-text" data-act="del-plan" data-plan="${p.id}">Löschen</button>
         </div></div>`;
-    }).join('') || '<p class="empty">Noch keine Pläne.</p>'}
-    <button class="btn ghost" data-act="new-plan">+ Neuer Plan</button>
+    }).join('')}
+    <button class="btn ghost" data-act="new-plan">${icon.plus}Neuer Plan</button>
     </div>`;
 }
 
 function viewPlanEditor(id) {
   const p = planById(id);
-  if (!p) return '<p class="empty">Plan nicht gefunden.</p>';
+  if (!p) return header('Plan', ['#/plaene', 'Pläne']) + empty('Diesen Plan gibt es nicht (mehr).');
   const items = p.items.map((it, i) => {
     const tools = `<div class="tools">
       <button class="icon-btn" data-act="mv" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="nach oben">${icon.up}</button>
       <button class="icon-btn" data-act="mv" data-dir="1" ${i === p.items.length - 1 ? 'disabled' : ''} aria-label="nach unten">${icon.down}</button>
       <button class="icon-btn" data-act="rm" aria-label="entfernen">${icon.del}</button></div>`;
     if (it.type === 'rest') {
-      return `<li class="item rest" data-item="${it.id}"><div class="item-head"><div class="thumb-s rest-ic">${icon.rest}</div><div class="item-name"><b>Pause</b></div>${tools}</div>
+      return `<li class="item rest" data-item="${it.id}"><div class="item-head"><div class="ic-circle sm rose">${icon.rest}</div><div class="item-name"><b>Pause</b></div>${tools}</div>
         <div class="fields"><label>Dauer (s)<input type="number" inputmode="numeric" data-f="dur" value="${it.dur}"></label></div></li>`;
     }
     const ex = byId[it.exId];
     const last = lastFor(it.exId);
     return `<li class="item" data-item="${it.id}">
-      <div class="item-head"><div class="thumb-s">${figureStatic(ex)}</div>
+      <div class="item-head">${circleFig(ex, 'sm')}
         <div class="item-name"><b>${esc(ex.name)}</b>${last ? `<small>Zuletzt: ${setsText(last.sets, last.mode)}</small>` : ''}</div>${tools}</div>
       <div class="seg"><button class="${it.mode === 'reps' ? 'on' : ''}" data-act="mode" data-mode="reps">Wiederholungen</button><button class="${it.mode === 'time' ? 'on' : ''}" data-act="mode" data-mode="time">Dauer</button></div>
       <div class="fields">
@@ -218,13 +271,13 @@ function viewPlanEditor(id) {
       </div></li>`;
   }).join('');
   const { n, s } = planEstimate(p);
-  return `<header class="top"><a class="back" href="#/plaene">${icon.back}Pläne</a>
-      <input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans"></header>
-    <p class="sub">${n} Übung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)} · Änderungen werden automatisch gespeichert</p>
-    <ol class="items" data-plan="${p.id}">${items || '<p class="empty">Noch leer – füge Übungen und Pausen hinzu.</p>'}</ol>
+  return `<header class="app-head"><a class="back" href="#/plaene">${icon.back}Pläne</a>
+      <div class="head-row"><input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans">${LOGO}</div></header>
+    <p class="sub">${n} Übung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)} · wird automatisch gespeichert</p>
+    <ol class="items" data-plan="${p.id}">${items || '<p class="hint">Noch leer. Füg Übungen und Pausen hinzu.</p>'}</ol>
     <div class="row">
-      <a class="btn" href="#/plan/${p.id}/add">+ Übung</a>
-      <button class="btn" data-act="add-rest" data-plan="${p.id}">+ Pause</button>
+      <a class="btn" href="#/plan/${p.id}/add">${icon.plus}Übung</a>
+      <button class="btn peach" data-act="add-rest" data-plan="${p.id}">${icon.plus}Pause</button>
     </div>
     <button class="btn primary big" data-act="start" data-plan="${p.id}" ${n ? '' : 'disabled'}>${icon.play}Training starten</button>`;
 }
@@ -287,16 +340,16 @@ function nextStep() {
 
 function viewTraining() {
   const A = db.active;
-  if (!A) return `<header class="top"><h1>Training</h1></header><p class="empty">Kein Training aktiv. <a href="#/plaene">Plan starten</a></p>`;
+  if (!A) return header('Training') + empty('Gerade läuft kein Training.', '', `<a class="btn primary" href="#/plaene">Plan starten</a>`);
   const step = A.steps[A.idx];
   const pct = Math.round((A.idx / A.steps.length) * 100);
   const top = `<header class="tr-top">
       <button class="icon-btn" data-act="exit" aria-label="Training beenden">${icon.del}</button>
       <div class="tr-title"><b>${esc(A.planName)}</b><small>${Math.min(A.idx + 1, A.steps.length)} / ${A.steps.length}</small></div>
-      <button class="icon-btn sound ${db.sound ? 'on' : ''}" data-act="sound" aria-label="Ton">${db.sound ? '🔔' : '🔕'}</button>
+      <button class="icon-btn" data-act="sound" aria-label="Ton ${db.sound ? 'aus' : 'an'}schalten">${db.sound ? icon.bell : icon.bellOff}</button>
     </header><div class="progress"><div style="width:${pct}%"></div></div>`;
   const sheet = exitSheet ? `<div class="sheet-bg" data-act="exit-cancel"></div><div class="sheet">
-      <b>Training beenden?</b>
+      <p class="serif">Training beenden?</p>
       <button class="btn primary" data-act="finish">Beenden &amp; speichern</button>
       <button class="btn danger" data-act="discard">Verwerfen</button>
       <button class="btn" data-act="exit-cancel">Weiter trainieren</button></div>` : '';
@@ -309,10 +362,11 @@ function viewTraining() {
 
   if (step.k === 'rest') {
     const nx = A.steps[A.idx + 1];
-    const nxText = nx ? (nx.k === 'rest' ? 'Pause' : `${byId[itemOf(nx).exId].name} – Satz ${nx.set + 1}`) : 'Fertig!';
+    const nxText = nx ? (nx.k === 'rest' ? 'Pause' : `${byId[itemOf(nx).exId].name} – Satz ${nx.set + 1}`) : 'Geschafft';
     return top + `<section class="tr-step">
-      <div class="rest-big">${icon.rest}</div>
+      <div class="rest-head"><div class="ic-circle rose">${icon.rest}</div></div>
       <h2 class="tr-name">Pause</h2>
+      <p class="tr-set">Durchatmen. Regeneration ist Teil des Trainings.</p>
       ${timerBlock(true)}
       <p class="next">Als Nächstes: <b>${esc(nxText)}</b></p>
       </section>` + nav + sheet;
@@ -326,7 +380,7 @@ function viewTraining() {
     <p class="tr-set">Satz ${step.set + 1} von ${it.sets} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}</p>
     ${it.mode === 'time' ? timerBlock(false) : stepper('reps', 'Wiederholungen', A.cur.reps, 1)}
     ${stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper')}
-    <button class="btn primary big" data-act="done">✓ Satz erledigt</button>
+    <button class="btn primary big" data-act="done">${icon.check}Satz erledigt</button>
     </section>` + nav + sheet;
 }
 
@@ -385,13 +439,16 @@ function viewSummary() {
   const A = db.active;
   const mins = fmtDur((Date.now() - A.startedAt) / 1000);
   const rows = A.items.filter((i) => i.type === 'ex' && A.log[i.id]?.some(Boolean))
-    .map((i) => `<li><b>${esc(byId[i.exId].name)}</b><small>${setsText(A.log[i.id].filter(Boolean), i.mode)}</small></li>`).join('');
+    .map((i) => `<li class="ck-row"><span class="ck">${icon.check}</span><div><b>${esc(byId[i.exId].name)}</b><small>${setsText(A.log[i.id].filter(Boolean), i.mode)}</small></div></li>`).join('');
+  const quote = SIGNATURES[Math.floor((A.startedAt / 1000) % SIGNATURES.length)];
   return `<section class="summary">
-    <div class="big-emoji">💪</div><h2>Geschafft!</h2>
-    <p class="sub">${mins}</p>
-    <ul class="list">${rows || '<li>Keine Sätze erfasst.</li>'}</ul>
-    <button class="btn primary big" data-act="finish">Speichern</button>
-    <button class="btn" data-act="prev">‹ Zurück</button>
+    ${LEAF}
+    <h2 class="hero-title">Stark<span class="accent">gemacht!</span></h2>
+    <p class="sub">${mins} · ${A.items.filter((i) => i.type === 'ex' && A.log[i.id]?.some(Boolean)).length} Übungen</p>
+    <ul class="list checklist-list">${rows || '<li>Keine Sätze erfasst.</li>'}</ul>
+    <blockquote class="quote-card">${quote}</blockquote>
+    <button class="btn primary big" data-act="finish">${icon.check}Speichern</button>
+    <button class="btn ghost" data-act="prev">‹ Zurück</button>
     <button class="btn danger-text" data-act="discard">Verwerfen</button></section>`;
 }
 
@@ -403,7 +460,7 @@ function finishTraining() {
     const s = { id: uid(), date: A.startedAt, end: Date.now(), planId: A.planId, planName: A.planName, items };
     db.history.push(s);
     db.active = null; exitSheet = false; save();
-    toast('Training gespeichert');
+    toast('Stark gemacht! 💚 Training gespeichert');
     go('verlauf/' + s.id);
   } else {
     db.active = null; exitSheet = false; save();
@@ -437,28 +494,32 @@ function exerciseStats() {
 function viewHistory() {
   const sessions = [...db.history].sort((a, b) => b.date - a.date);
   const stats = exerciseStats();
-  return `<header class="top"><h1>Verlauf</h1></header>
-    <h2>Fortschritt je Übung</h2>
-    ${stats.length ? `<div class="list-links">${stats.map(([id, s]) => `<a href="#/fortschritt/${id}"><span>${esc(byId[id].name)}</span><small>${s.n}× · ${fmtDate(s.last)}</small></a>`).join('')}</div>`
-      : '<p class="empty">Nach dem ersten gespeicherten Training siehst du hier deinen Fortschritt.</p>'}
-    <h2>Trainings</h2>
-    ${sessions.length ? `<div class="list-links">${sessions.map((s) => `<a href="#/verlauf/${s.id}"><span>${esc(s.planName)}</span><small>${fmtDate(s.date, { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</small></a>`).join('')}</div>`
-      : '<p class="empty">Noch keine Trainings.</p>'}
-    <h2>Einstellungen &amp; Daten</h2>
+  const theme = db.theme || 'system';
+  return header('Verlauf') + `
+    ${!sessions.length ? empty('Kraft ist mehr als Optik.', 'Nach deinem ersten gespeicherten Training siehst du hier deinen Fortschritt.',
+      `<a class="btn primary" href="#/plaene">Zu deinen Plänen</a>`) : `
+    ${pill('Fortschritt je Übung')}
+    <div class="list-links">${stats.map(([id, s]) => `<a href="#/fortschritt/${id}"><span>${esc(byId[id].name)}</span><small>${s.n}× · ${fmtDate(s.last)}</small></a>`).join('')}</div>
+    ${pill('Trainings')}
+    <div class="list-links">${sessions.map((s) => `<a href="#/verlauf/${s.id}"><span>${esc(s.planName)}</span><small>${fmtDate(s.date, { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</small></a>`).join('')}</div>`}
+    ${pill('Einstellungen &amp; Daten')}
     <div class="stack">
-      <label class="toggle"><span>Ton bei Timer</span><input type="checkbox" data-act="sound-cb" ${db.sound ? 'checked' : ''}></label>
+      <div class="setting"><span>Erscheinungsbild</span>
+        <div class="seg" role="radiogroup">${[['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) =>
+          `<button class="${theme === k ? 'on' : ''}" data-act="theme" data-theme="${k}" role="radio" aria-checked="${theme === k}">${l}</button>`).join('')}</div></div>
+      <label class="setting toggle"><span>Ton beim Timer</span><input type="checkbox" data-act="sound-cb" ${db.sound ? 'checked' : ''}></label>
       <button class="btn" data-act="export">Daten exportieren (JSON)</button>
-      <label class="btn">Daten importieren<input type="file" accept="application/json,.json" id="import" hidden></label>
-      <p class="hint">Alle Daten liegen nur auf diesem Gerät. Gelegentlich exportieren schützt vor Datenverlust.</p>
+      <label class="btn ghost">Daten importieren<input type="file" accept="application/json,.json" id="import" hidden></label>
+      <p class="hint">Deine Daten liegen nur auf diesem Gerät. Exportier sie ab und zu, dann gehen sie nicht verloren.</p>
     </div>`;
 }
 
 function viewSession(id) {
   const s = db.history.find((x) => x.id === id);
-  if (!s) return '<p class="empty">Training nicht gefunden.</p>';
-  return `<header class="top"><a class="back" href="#/verlauf">${icon.back}Verlauf</a><h1>${esc(s.planName)}</h1></header>
+  if (!s) return header('Training', ['#/verlauf', 'Verlauf']) + empty('Dieses Training gibt es nicht (mehr).');
+  return header(s.planName, ['#/verlauf', 'Verlauf']) + `
     <p class="sub">${fmtDate(s.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${new Date(s.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</p>
-    <ul class="list">${s.items.map((it) => `<li><a href="#/fortschritt/${it.exId}"><div class="thumb-s">${byId[it.exId] ? figureStatic(byId[it.exId]) : ''}</div>
+    <ul class="list">${s.items.map((it) => `<li><a href="#/fortschritt/${it.exId}">${byId[it.exId] ? circleFig(byId[it.exId], 'sm') : ''}
       <div><b>${esc(byId[it.exId]?.name || it.exId)}</b><small>${setsText(it.sets, it.mode)}</small></div></a></li>`).join('')}</ul>
     <button class="btn danger-text" data-act="del-session" data-id="${s.id}">Training löschen</button>`;
 }
@@ -495,18 +556,18 @@ function seriesFor(exId) {
 
 function viewProgress(exId) {
   const ex = byId[exId];
-  if (!ex) return '<p class="empty">Übung nicht gefunden.</p>';
+  if (!ex) return header('Fortschritt', ['#/verlauf', 'Verlauf']) + empty('Diese Übung gibt es nicht (mehr).');
   const pts = seriesFor(exId);
   const avail = METRICS.filter((m) => pts.some((p) => p[m.k] != null));
   if (!avail.find((m) => m.k === metricSel)) metricSel = avail[0]?.k;
-  return `<header class="top"><a class="back" href="#/verlauf">${icon.back}Verlauf</a><h1>${esc(ex.name)}</h1></header>
+  return header(ex.name, ['#/verlauf', 'Verlauf']) + `<p class="overline">Fortschritt</p>
     ${pts.length ? `
     <div class="chips">${avail.map((m) => `<button class="chip ${m.k === metricSel ? 'on' : ''}" data-act="metric" data-k="${m.k}">${m.label}</button>`).join('')}</div>
     <div id="chart" class="chart" data-ex="${exId}"></div>
     <table class="tbl"><thead><tr><th>Datum</th><th>${METRICS.find((m) => m.k === metricSel).label}</th><th>Sätze</th></tr></thead><tbody>
     ${[...pts].reverse().map((p) => `<tr><td>${fmtDate(p.date)}</td><td>${p[metricSel] != null ? fmtNum(p[metricSel]) : '–'}</td><td>${p.text}</td></tr>`).join('')}
-    </tbody></table>` : '<p class="empty">Noch keine Daten zu dieser Übung.</p>'}
-    <a class="row-link" href="#/uebung/${ex.id}"><span>Zur Übung</span><span>›</span></a>`;
+    </tbody></table>` : empty('Noch keine Daten zu dieser Übung.')}
+    <a class="row-link" href="#/uebung/${ex.id}"><span>Zur Übung</span><span class="more">Ansehen</span></a>`;
 }
 
 function niceTicks(lo, hi, n = 4) {
@@ -672,6 +733,7 @@ document.addEventListener('click', (ev) => {
 
     // Verlauf
     case 'metric': metricSel = btn.dataset.k; render(); break;
+    case 'theme': db.theme = btn.dataset.theme; save(); applyTheme(); render(); break;
     case 'del-session':
       if (confirm('Dieses Training aus dem Verlauf löschen?')) { db.history = db.history.filter((s) => s.id !== btn.dataset.id); save(); go('verlauf'); }
       break;
@@ -703,7 +765,7 @@ document.addEventListener('change', (ev) => {
     else it[t.dataset.f] = Math.max(0, Math.round(v ?? 0));
     save();
     const { n, s } = planEstimate(p);
-    $('.sub').textContent = `${n} Übung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)} · Änderungen werden automatisch gespeichert`;
+    $('.sub').textContent = `${n} Übung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)} · wird automatisch gespeichert`;
   } else if (t.dataset.cur) {
     const v = num(t.value);
     db.active.cur[t.dataset.cur] = t.dataset.cur === 'weight' ? (v && v > 0 ? v : null) : Math.max(0, v ?? 0);

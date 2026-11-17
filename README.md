@@ -1,6 +1,6 @@
-# Kraftkatalog
+# flow.training
 
-Statische Web-App (PWA) für iPhone: Katalog an Kraftübungen mit schematischen Figuren,
+Statische Web-App (PWA) für iPhone. Design: [docs/DESIGN.md](docs/DESIGN.md). Katalog an Kraftübungen mit schematischen Figuren,
 Trainingspläne mit Timer und Ton, Verlauf mit Fortschrittsdiagramm. Kein Build-Schritt.
 
 - Daten liegen nur lokal im Browser (`localStorage`, Schlüssel `kraftkatalog.v1`). Export/Import unter *Verlauf*.

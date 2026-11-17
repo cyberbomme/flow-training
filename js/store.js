@@ -10,6 +10,7 @@ function defaults() {
     version: 1,
     equip: EQUIPMENT.map((e) => e.id),
     sound: true,
+    theme: 'system',
     plans: [samplePlan()],
     history: [],
     active: null,

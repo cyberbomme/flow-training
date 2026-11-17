@@ -110,8 +110,25 @@ function staticSVG(props) {
   return s;
 }
 
-function frame(ex, inner) {
-  const view = ex.view || '0 0 100 100';
+// Quadratischer Ausschnitt um den Inhalt (für runde Thumbnails)
+function fitView(ex) {
+  const xs = [], ys = [];
+  for (const J of posesOf(ex)) for (const k in J) { xs.push(J[k][0]); ys.push(J[k][1]); }
+  const hs = posesOf(ex).map((J) => J.h);
+  hs.forEach((h) => { xs.push(h[0] - L.head, h[0] + L.head); ys.push(h[1] - L.head, h[1] + L.head); });
+  for (const pr of ex.props || []) {
+    if (pr.t === 'bench') { xs.push(pr.x, pr.x + pr.w); ys.push(pr.y); }
+    if (pr.t === 'bar') { ys.push(pr.y); }
+    if (pr.t === 'band') { xs.push(pr.from[0]); ys.push(pr.from[1]); }
+  }
+  if (!ex.noGround) ys.push(GROUND);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const s = Math.max(x1 - x0, y1 - y0) * 1.3 + 8;
+  return `${f1((x0 + x1) / 2 - s / 2)} ${f1((y0 + y1) / 2 - s / 2)} ${f1(s)} ${f1(s)}`;
+}
+
+function frame(ex, inner, fit) {
+  const view = fit ? fitView(ex) : ex.view || '0 0 100 100';
   const ground = ex.noGround ? '' : `<path class="fig-ground" d="M2,${GROUND + 1.5}H98"/>`;
   return `<svg class="fig" viewBox="${view}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ground}${staticSVG(ex.props || [])}${inner}</svg>`;
 }
@@ -123,11 +140,11 @@ function posesOf(ex) {
 }
 
 // Statische Darstellung: Startpose blass, Endpose kräftig
-export function figureStatic(ex) {
+export function figureStatic(ex, fit = false) {
   const P = posesOf(ex);
   const props = ex.props || [];
-  if (P.length === 1) return frame(ex, propsSVG(props, P[0]) + bodySVG(P[0]));
-  return frame(ex, propsSVG(props, P[0], true) + bodySVG(P[0], true) + propsSVG(props, P[1]) + bodySVG(P[1]));
+  if (P.length === 1) return frame(ex, propsSVG(props, P[0]) + bodySVG(P[0]), fit);
+  return frame(ex, propsSVG(props, P[0], true) + bodySVG(P[0], true) + propsSVG(props, P[1]) + bodySVG(P[1]), fit);
 }
 
 function figureAt(ex, t) {

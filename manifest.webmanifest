@@ -1,13 +1,13 @@
 {
-  "name": "Kraftkatalog",
-  "short_name": "Kraft",
-  "description": "Kraftübungen, Trainingspläne mit Timer und Fortschrittsverlauf",
+  "name": "flow.training",
+  "short_name": "flow.training",
+  "description": "Übungen, Trainingspläne mit Timer und dein Fortschritt",
   "lang": "de",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#141414",
-  "theme_color": "#141414",
+  "background_color": "#F3F0EB",
+  "theme_color": "#F3F0EB",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
