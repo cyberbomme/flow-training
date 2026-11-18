@@ -132,6 +132,7 @@ const icon = {
   grip: '<svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  reset: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v4.5h4.5"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg>',
@@ -406,12 +407,15 @@ function enterStep(autoStart) {
   A.timer = null; A.cur = null;
   if (step) {
     if (step.k === 'rest') {
+      // Die Pause läuft immer von selbst – Start/Pause/Stop gibt es dort nicht
       A.timer = T.makeTimer(step.dur);
-      if (autoStart) T.start(A.timer);
+      T.start(A.timer);
     } else {
       const it = itemOf(step);
       const prev = A.log[it.id]?.[step.set] || A.log[it.id]?.[step.set - 1];
-      A.cur = { reps: prev?.reps ?? it.reps, weight: prev?.weight ?? it.weight, dur: it.dur };
+      const pre = A.weightFor?.[it.id];  // in der Pause vorgewähltes Gewicht
+      A.cur = { reps: prev?.reps ?? it.reps, weight: pre !== undefined ? pre : prev?.weight ?? it.weight, dur: it.dur };
+      if (A.weightFor) delete A.weightFor[it.id];
       const afterRest = before?.k === 'rest';
       // Zeit-Übungen laufen nach einer Pause von selbst los, im Autopilot immer – auch Wiederholungen.
       const auto = autoStart && (db.autopilot || (afterRest && it.mode === 'time'));
@@ -444,51 +448,96 @@ function nextStep() {
   render();
 }
 
+// Alle Trainingsseiten (Übung, Autopilot, Vorlauf, Zeit, Superset, Pause, Abschluss) teilen ein Gerüst
+// mit zehn festen Plätzen – nur der Inhalt wechselt, damit nichts springt (Konzept A).
+function trScreen({ hero, title, sub, card1, card2, main, next, nav }) {
+  const A = db.active;
+  const pct = Math.round((Math.min(A.idx, A.steps.length) / A.steps.length) * 100);
+  return `<section class="tr-screen">
+    <header class="tr-top">
+      <button class="icon-btn" data-act="exit" aria-label="Training beenden">${icon.del}</button>
+      <div class="tr-title"><b>${esc(A.planName)}</b><small>${Math.min(A.idx + 1, A.steps.length)} / ${A.steps.length}</small></div>
+      <button class="icon-btn" data-act="sound" aria-label="Ton ${db.sound ? 'aus' : 'an'}schalten">${db.sound ? icon.bell : icon.bellOff}</button>
+    </header>
+    <div class="progress"><div style="width:${pct}%"></div></div>
+    <div class="tr-hero">${hero}</div>
+    <h2 class="tr-name">${title}</h2>
+    <p class="tr-set">${sub}</p>
+    ${card1}${card2}${main}${next}${nav}</section>`;
+}
+const trNav = (right = `<button class="btn ghost" data-act="skip">Überspringen ›</button>`) => `<div class="tr-nav">
+  <button class="btn ghost" data-act="prev" ${db.active.idx === 0 ? 'disabled' : ''}>‹ Zurück</button>${right}</div>`;
+const trMain = (act, label, ic, soft) => `<button class="btn ${soft ? '' : 'primary'} tr-main" data-act="${act}">${ic}${label}</button>`;
+
 function viewTraining() {
   const A = db.active;
   if (!A) return header('Training') + empty('Gerade läuft kein Training.', '', `<a class="btn primary" href="#/plaene">Plan starten</a>`);
   const step = A.steps[A.idx];
-  const pct = Math.round((A.idx / A.steps.length) * 100);
-  const top = `<header class="tr-top">
-      <button class="icon-btn" data-act="exit" aria-label="Training beenden">${icon.del}</button>
-      <div class="tr-title"><b>${esc(A.planName)}</b><small>${Math.min(A.idx + 1, A.steps.length)} / ${A.steps.length}</small></div>
-      <button class="icon-btn" data-act="sound" aria-label="Ton ${db.sound ? 'aus' : 'an'}schalten">${db.sound ? icon.bell : icon.bellOff}</button>
-    </header><div class="progress"><div style="width:${pct}%"></div></div>`;
   const sheet = exitSheet ? `<div class="sheet-bg" data-act="exit-cancel"></div><div class="sheet">
       <p class="serif">Training beenden?</p>
       <button class="btn primary" data-act="finish">Beenden &amp; speichern</button>
       <button class="btn danger" data-act="discard">Verwerfen</button>
       <button class="btn" data-act="exit-cancel">Weiter trainieren</button></div>` : '';
 
-  if (!step) return top + viewSummary() + sheet;
-
-  const nav = `<div class="tr-nav">
-      <button class="btn ghost" data-act="prev" ${A.idx === 0 ? 'disabled' : ''}>‹ Zurück</button>
-      <button class="btn ghost" data-act="skip">Überspringen ›</button></div>`;
+  if (!step) return viewSummary() + sheet;
 
   if (step.k === 'rest') {
-    return top + `<section class="tr-step">
-      <div class="rest-head"><div class="ic-circle rose">${icon.rest}</div></div>
-      <h2 class="tr-name">Pause</h2>
-      <p class="tr-set">Durchatmen. Regeneration ist Teil des Trainings.</p>
-      ${timerBlock(true)}
-      ${nextCard()}
-      </section>` + nav + sheet;
+    return trScreen({
+      hero: `<div class="fig-tr rose timed"><div class="fig-icon">${icon.rest}</div>${figRing()}</div>`,
+      title: 'Pause',
+      sub: 'Durchatmen. Regeneration gehört dazu.',
+      card1: restCard(),
+      card2: nextWeightCard(),
+      main: trMain('skip', 'Pause beenden', icon.chev, true),
+      next: nextCard(),
+      nav: trNav(),
+    }) + sheet;
   }
 
   const it = itemOf(step), ex = byId[it.exId];
   const target = it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`;
   const counted = !!A.timer;
-  const setLine = step.ss ? `<span class="tag-l">${step.ss}</span> Superset · Runde ${step.set + 1} von ${step.of}` : `Satz ${step.set + 1} von ${it.sets}`;
-  return top + `<section class="tr-step">
-    <div class="fig-tr ${counted ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${counted ? figRing() : ''}</div>
-    <h2 class="tr-name">${esc(ex.name)}</h2>
-    <p class="tr-set">${setLine} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}</p>
-    ${counted ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1)}
-    ${stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper')}
-    <button class="btn primary big" data-act="done">${icon.check}Satz erledigt</button>
-    ${nextCard()}
-    </section>` + nav + sheet;
+  const setLine = step.ss ? `<span class="tag-l">${step.ss}</span> Runde ${step.set + 1} von ${step.of}` : `Satz ${step.set + 1} von ${it.sets}`;
+  return trScreen({
+    hero: `<div class="fig-tr ${counted ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${counted ? figRing() : ''}</div>`,
+    title: esc(ex.name),
+    sub: `${setLine} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}`,
+    card1: counted ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1),
+    card2: stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper'),
+    main: trMain('done', 'Satz erledigt', icon.check),
+    next: nextCard(),
+    nav: trNav(),
+  }) + sheet;
+}
+
+// Pause: −15 s / +15 s an der Stelle von − / +
+function restCard() {
+  const z = timerState(db.active.timer);
+  return `<div class="stepper-wrap timer-card"><span id="tlabel">Pause</span><div class="stepper">
+    <button data-act="t-add" data-s="-15" aria-label="15 Sekunden kürzer">−15</button>
+    <output class="t-val" id="tdisp" aria-live="off">${z.value}</output>
+    <button data-act="t-add" data-s="15" aria-label="15 Sekunden länger">+15</button></div></div>`;
+}
+
+// Pause: Gewicht für den nächsten Satz schon jetzt einstellen
+function nextWorkStep() {
+  const A = db.active;
+  for (let i = A.idx + 1; i < A.steps.length; i++) if (A.steps[i].k === 'work') return A.steps[i];
+  return null;
+}
+function nextWeight(step) {
+  const A = db.active, it = itemOf(step);
+  if (A.weightFor && it.id in A.weightFor) return A.weightFor[it.id];
+  const prev = A.log[it.id]?.[step.set] || A.log[it.id]?.[step.set - 1];
+  return prev?.weight ?? it.weight;
+}
+function nextWeightCard() {
+  const nx = nextWorkStep();
+  if (!nx) return `<div class="stepper-wrap is-empty"><span>Nächster Satz</span><div class="stepper"><output class="t-val">–</output></div></div>`;
+  return `<div class="stepper-wrap"><span>Nächster Satz (kg)</span><div class="stepper">
+    <button data-act="nw" data-d="-1" aria-label="Gewicht für den nächsten Satz weniger">−</button>
+    <input type="text" inputmode="decimal" value="${fmtNum(nextWeight(nx))}" placeholder="Körper" data-nw="1" aria-label="Gewicht für den nächsten Satz">
+    <button data-act="nw" data-d="1" aria-label="Gewicht für den nächsten Satz mehr">+</button></div></div>`;
 }
 
 // „Als Nächstes“: kleine Vorschau mit Piktogramm – auf Übungs- und Pausen-Screens gleich
@@ -546,25 +595,9 @@ function figRing() {
 function timerCard() {
   const t = db.active.timer, z = timerState(t);
   return `<div class="stepper-wrap timer-card"><span id="tlabel">${z.label}</span><div class="stepper">
-    <button data-act="t-stop" aria-label="Stop – zurücksetzen">${icon.stop}</button>
+    <button data-act="t-stop" aria-label="Zurücksetzen">${icon.reset}</button>
     <output class="t-val" id="tdisp" aria-live="off">${z.value}</output>
     <button class="t-go" data-act="t-toggle" id="t-toggle" aria-label="${t.running ? 'Pause' : 'Start'}">${t.running ? icon.pause : icon.play}</button></div></div>`;
-}
-
-function timerBlock(isRest) {
-  const t = db.active.timer;
-  const r = T.remaining(t);
-  return `<div class="timer ${isRest ? 'is-rest' : ''}">
-      <svg viewBox="0 0 120 120"><circle class="ring-bg" cx="60" cy="60" r="54"/>
-      <circle class="ring" cx="60" cy="60" r="54" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - (r / t.total) * 100}"/></svg>
-      <div class="time" id="tdisp">${T.fmt(r)}</div>
-    </div>
-    <div class="tbtns">
-      <button class="btn primary" data-act="t-start" id="t-start" ${t.running ? 'disabled' : ''}>${icon.play}Start</button>
-      <button class="btn" data-act="t-pause" id="t-pause" ${t.running ? '' : 'disabled'}>${icon.pause}Pause</button>
-      <button class="btn" data-act="t-stop">${icon.stop}Stop</button>
-    </div>
-    <div class="tadj"><button class="link" data-act="t-add" data-s="-15">−15 s</button><button class="link" data-act="t-add" data-s="15">+15 s</button></div>`;
 }
 
 let lastBeep = null;
@@ -576,12 +609,10 @@ function startTicker() {
     const t = A.timer;
     if (!t || db.active !== A) return;
     const z = timerState(t), r = z.r;
-    const d = $('#tdisp'), ring = $('.timer .ring, .fig-ring .ring'), lb = $('#tlabel');
-    if (d) d.textContent = $('.timer .time') ? T.fmt(r) : z.value;
+    const d = $('#tdisp'), ring = $('.fig-ring .ring'), lb = $('#tlabel');
+    if (d) d.textContent = z.value;
     if (ring) ring.setAttribute('stroke-dashoffset', 100 - z.frac * 100);
-    if (lb && lb.textContent !== z.label) lb.textContent = z.label;
-    $('#t-start')?.toggleAttribute('disabled', t.running);
-    $('#t-pause')?.toggleAttribute('disabled', !t.running);
+    if (lb && A.steps[A.idx]?.k !== 'rest' && lb.textContent !== z.label) lb.textContent = z.label;
     const tg = $('#t-toggle');
     if (tg && tg.dataset.running !== String(t.running)) {
       tg.dataset.running = t.running; tg.innerHTML = t.running ? icon.pause : icon.play;
@@ -607,19 +638,22 @@ function startTicker() {
 
 function viewSummary() {
   const A = db.active;
-  const mins = fmtDur((Date.now() - A.startedAt) / 1000);
   const done = activeExercises();
-  const rows = done.map(({ it: i, label }) => `<li class="ck-row"><span class="ck">${icon.check}</span><div><b>${label ? `<span class="tag-l">${label}</span> ` : ''}${esc(byId[i.exId].name)}</b><small>${setsText(A.log[i.id].filter(Boolean), i.mode)}</small></div></li>`).join('');
+  const sets = done.flatMap(({ it }) => A.log[it.id].filter(Boolean));
+  const vol = sets.reduce((a, x) => a + (x.reps || 0) * (x.weight || 0), 0);
+  const secs = sets.reduce((a, x) => a + (x.dur || 0), 0);
   const quote = SIGNATURES[Math.floor((A.startedAt / 1000) % SIGNATURES.length)];
-  return `<section class="summary">
-    ${LEAF}
-    <h2 class="hero-title">Stark<span class="accent">gemacht!</span></h2>
-    <p class="sub">${mins} · ${done.length} Übung${done.length === 1 ? '' : 'en'}</p>
-    <ul class="list checklist-list">${rows || '<li>Keine Sätze erfasst.</li>'}</ul>
-    <blockquote class="quote-card">${quote}</blockquote>
-    <button class="btn primary big" data-act="finish">${icon.check}Speichern</button>
-    <button class="btn ghost" data-act="prev">‹ Zurück</button>
-    <button class="btn danger-text" data-act="discard">Verwerfen</button></section>`;
+  const stat = (label, val) => `<div class="stepper-wrap"><span>${label}</span><div class="stepper"><output class="t-val">${val}</output></div></div>`;
+  return trScreen({
+    hero: `<div class="fig-tr rose"><div class="fig-icon leaf-icon">${LEAF}</div></div>`,
+    title: 'Stark gemacht!',
+    sub: `${fmtDur((Date.now() - A.startedAt) / 1000)} · ${done.length} Übung${done.length === 1 ? '' : 'en'} · ${sets.length} Sätze`,
+    card1: stat('Sätze', sets.length),
+    card2: vol ? stat('Volumen (kg)', fmtNum(vol)) : stat('Zeit unter Spannung', T.fmt(secs)),
+    main: trMain('finish', 'Speichern', icon.check),
+    next: `<div class="next-card quote">${quote}</div>`,
+    nav: trNav(`<button class="btn ghost danger-text" data-act="discard">Verwerfen</button>`),
+  });
 }
 
 function finishTraining() {
@@ -953,9 +987,14 @@ document.addEventListener('click', (ev) => {
       break;
     }
     case 'skip': T.unlockAudio(); nextStep(); break;
+    case 'nw': {
+      const nx = nextWorkStep(); if (!nx) break;
+      const id = itemOf(nx).id, v = (nextWeight(nx) || 0) + +btn.dataset.d;
+      (A.weightFor ||= {})[id] = v > 0 ? v : null;
+      $('[data-nw]').value = fmtNum(A.weightFor[id]); save();
+      break;
+    }
     case 'prev': if (A.idx > 0) { A.idx--; enterStep(false); render(); } break;
-    case 't-start': T.unlockAudio(); T.start(A.timer); T.beep('start'); save(); break;
-    case 't-pause': T.pause(A.timer); save(); break;
     case 't-toggle':
       if (A.timer.running) T.pause(A.timer);
       else { T.unlockAudio(); T.start(A.timer); T.beep('start'); }
@@ -1016,6 +1055,10 @@ document.addEventListener('change', (ev) => {
     if (key === 'weight') it.weight = v && v > 0 ? v : null;
     else it[key] = Math.max(PLAN_MIN[key] ?? 0, Math.round(v ?? 0));
     settleDraft(p.id); save(); render();
+  } else if (t.dataset.nw) {
+    const nx = nextWorkStep(); if (!nx) return;
+    const v = num(t.value);
+    (db.active.weightFor ||= {})[itemOf(nx).id] = v && v > 0 ? v : null; save();
   } else if (t.dataset.cur) {
     const v = num(t.value);
     db.active.cur[t.dataset.cur] = t.dataset.cur === 'weight' ? (v && v > 0 ? v : null) : Math.max(0, v ?? 0);

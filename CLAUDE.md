@@ -34,3 +34,7 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   Tempo-Schätzungen in `TEMPO` (`js/exercises.js`), eigene Werte in `db.tempo` (1–8 s); Vorlauf `db.setup` nur vor Sätzen ohne Pause davor.
 - Tempo ist die eine Quelle für Animation, Autopilot und Plandauer: 1 Animationszyklus = 1 Wiederholung; mit Timer phasengenau gekoppelt.
 - „Als Nächstes“-Karte mit Piktogramm auf Übungs- und Pausen-Screens.
+- **Alle Trainingsseiten teilen ein Gerüst** (`trScreen` in `js/app.js`, Konzept A): Kopf · Fortschritt · Kreis · Titel · Untertitel ·
+  Karte 1 · Karte 2 · Hauptaktion · Als Nächstes · Navigation – feste Höhen, nur der Inhalt wechselt. Neue Seitentypen nur über dieses Gerüst.
+- Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden“.
+- Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
