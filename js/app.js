@@ -1,5 +1,6 @@
 import { EXERCISES, EQUIPMENT, byId, TEMPO, MUSCLE_GROUPS } from './exercises.js';
 import { planIcon, planIconHTML } from './planicon.js';
+import { TEMPLATES } from './templates.js';
 import { figureStatic, animateFigure } from './figure.js';
 import { db, save, uid, exportJSON, importJSON } from './store.js';
 import * as T from './timer.js';
@@ -23,6 +24,7 @@ let metricSel = null;
 let exitSheet = false;
 let planOpen = null; // aufgeklappte Zeile im Plan-Editor
 let addSheet = false; // Auswahlfenster „Zu Plan hinzufügen“ auf der Übungsseite
+let showTpl = null;    // Vorlagen aufgeklappt? null = automatisch (offen, solange es keine Pläne gibt)
 let wakeLock = null;
 
 T.setSound(db.sound);
@@ -292,12 +294,10 @@ function viewExercise(id) {
 
 // ── Pläne ─────────────────────────────────────────────────
 function viewPlans() {
-  if (!db.plans.length) {
-    return header('Pläne') + empty('Noch kein Training geplant.', 'Starte mit deinem Körper, nicht gegen ihn.',
-      `<button class="btn primary" data-act="new-plan">${icon.plus}Ersten Plan anlegen</button>`);
-  }
-  return header('Pläne') + `
-    <div class="stack">
+  const top = !db.plans.length
+    ? empty('Noch kein Training geplant.', 'Starte mit deinem Körper, nicht gegen ihn – mit einer Vorlage oder einem eigenen Plan.',
+      `<button class="btn primary" data-act="new-plan">${icon.plus}Eigenen Plan anlegen</button>`)
+    : `<div class="stack">
     ${db.plans.map((p) => {
       const est = planEstimate(p), n = est.n;
       return `<div class="plan">
@@ -310,6 +310,31 @@ function viewPlans() {
     }).join('')}
     <button class="btn ghost" data-act="new-plan">${icon.plus}Neuer Plan</button>
     </div>`;
+  return header('Pläne') + top + templatesBlock();
+}
+
+// Vorlagen: Beispielpläne zum Übernehmen (js/templates.js)
+function templatesBlock() {
+  const open = showTpl ?? !db.plans.length;
+  const head = `<button class="tpl-toggle" data-act="tpl-toggle" aria-expanded="${open}">
+    <span class="pill-label">Vorlagen</span><span class="more">${open ? 'Einklappen' : `${TEMPLATES.length} Beispielpläne`}</span></button>`;
+  if (!open) return head;
+  return head + `<p class="hint">Übernimm eine Vorlage als eigenen Plan und pass Gewichte und Wiederholungen danach an dich an.</p>
+    <div class="stack">${TEMPLATES.map((t) => {
+      const exs = PE.flatten(t.items).map((x) => x.it);
+      const est = planEstimate(t), label = planIcon(t.name, exs).label;
+      const equip = [...new Set(exs.flatMap((e) => byId[e.exId].equip))].map((id) => EQUIPMENT.find((e) => e.id === id).name);
+      const taken = db.plans.some((p) => p.tpl === t.id);
+      return `<div class="plan tpl">
+        <div class="plan-main">${planIconHTML(t.name, exs)}<span class="plan-txt"><b>${esc(t.name)}</b>
+          <small>${label ? `${label} · ` : ''}${planMeta(est)}</small>
+          <small class="tpl-equip">${equip.length ? equip.join(' · ') : 'Ohne Geräte'}</small></span></div>
+        <p class="tpl-note">${esc(t.note)}</p>
+        <div class="plan-actions">
+          <button class="btn ${taken ? 'ghost' : 'primary'}" data-act="tpl-add" data-tpl="${t.id}">${icon.plus}${taken ? 'Nochmal übernehmen' : 'Übernehmen'}</button>
+          ${taken ? `<span class="tpl-taken">${icon.check}Schon in deinen Plänen</span>` : ''}
+        </div></div>`;
+    }).join('')}</div>`;
 }
 
 function viewPlanEditor(id) {
@@ -951,6 +976,17 @@ document.addEventListener('click', (ev) => {
       addSheet = false;
       const p = { id: uid(), name: 'Neuer Plan', items: [newItem(btn.dataset.ex)] };
       db.plans.push(p); save(); go('plan/' + p.id);
+      break;
+    }
+    case 'tpl-toggle': showTpl = !(showTpl ?? !db.plans.length); render(); break;
+    case 'tpl-add': {
+      const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
+      const items = JSON.parse(JSON.stringify(t.items));
+      PE.reId(items, uid);
+      const n = db.plans.filter((p) => p.tpl === t.id).length;
+      db.plans.push({ id: uid(), tpl: t.id, name: n ? `${t.name} (${n + 1})` : t.name, items });
+      showTpl = true; // offen lassen, falls weitere Vorlagen übernommen werden sollen
+      save(); toast(`„${t.name}“ ist jetzt in deinen Plänen`); render();
       break;
     }
     case 'new-plan': {

@@ -1,0 +1,96 @@
+// Beispielpläne als Vorlagen. „Übernehmen“ kopiert sie mit neuen IDs in die eigenen Pläne.
+// Gewichte sind bewusst moderat gewählt – nach dem Übernehmen an das eigene Niveau anpassen.
+// Kurzform: ex(id, sets, reps|'45s', kg, satzpause) · ss(runden, pause, …übungen) · rest(s)
+
+const ex = (exId, sets, amount, weight = null, rest = 60) => {
+  const time = typeof amount === 'string';
+  return { type: 'ex', exId, sets, mode: time ? 'time' : 'reps', reps: time ? 10 : amount, dur: time ? parseInt(amount, 10) : 30, weight, rest };
+};
+const ss = (rounds, rest, ...items) => ({ type: 'group', rounds, rest, items });
+const rest = (dur) => ({ type: 'rest', dur });
+
+export const TEMPLATES = [
+  {
+    id: 'tpl-ganzkoerper-start', name: 'Ganzkörper Einstieg',
+    note: 'Ohne Geräte, ruhiges Tempo – ideal zum Ankommen.',
+    items: [
+      ex('kniebeuge', 3, 12),
+      ex('liegestuetz', 3, 8),
+      ex('hueftheben', 3, 15),
+      ss(3, 60, ex('superman', 3, 10), ex('crunch', 3, 12)),
+      ex('unterarmstuetz', 3, '30s', null, 45),
+    ],
+  },
+  {
+    id: 'tpl-oberkoerper-kh', name: 'Oberkörper Kraft',
+    note: 'Kurzhanteln und Bank. Drücken und Ziehen im Wechsel.',
+    items: [
+      ex('bankdruecken-kh', 3, 10, 8, 90),
+      ex('rudern-kh', 3, 10, 8, 90),
+      ss(3, 75, ex('schulterdruecken-kh', 3, 10, 5), ex('frontheben', 3, 10, 3)),
+      ex('bizepscurl', 3, 12, 5),
+      ex('bank-dips', 3, 10),
+    ],
+  },
+  {
+    id: 'tpl-beine-po', name: 'Beine & Po',
+    note: 'Kurzhantel für Squat und Kreuzheben, zum Schluss halten.',
+    items: [
+      ex('goblet-squat', 4, 10, 10, 90),
+      ex('rumaenisches-kreuzheben', 3, 10, 10, 90),
+      ex('ausfallschritt', 3, 10, 4),
+      ex('hueftheben', 3, 15),
+      rest(60),
+      ex('wandsitzen', 2, '45s', null, 45),
+    ],
+  },
+  {
+    id: 'tpl-hiit-zirkel', name: 'HIIT Zirkel',
+    note: 'Vier Runden ohne Geräte, Pause erst nach jeder Runde.',
+    items: [
+      ss(4, 60,
+        ex('bergsteiger', 4, '30s'),
+        ex('kniebeuge', 4, 15),
+        ex('liegestuetz', 4, 10),
+        ex('seitstuetz', 4, '20s')),
+    ],
+  },
+  {
+    id: 'tpl-core', name: 'Core 15',
+    note: 'Rumpf-Superset, dann Seitstütz und Rücken.',
+    items: [
+      ss(3, 45, ex('unterarmstuetz', 3, '40s'), ex('crunch', 3, 15), ex('hollow-hold', 3, '30s')),
+      ex('seitstuetz', 2, '30s', null, 30),
+      ex('superman', 3, 12, null, 45),
+    ],
+  },
+  {
+    id: 'tpl-follikel-kraft', name: 'Follikelphase Kraft',
+    note: 'Langhantel, wenige Wiederholungen. In dieser Phase fühlen sich schwere Sätze oft leichter an – hör auf deinen Körper.',
+    items: [
+      ex('kniebeuge-lh', 4, 6, 30, 120),
+      ex('bankdruecken-lh', 4, 6, 25, 120),
+      ex('kreuzheben', 3, 5, 40, 150),
+      ex('rudern-lh', 3, 8, 25, 90),
+    ],
+  },
+  {
+    id: 'tpl-luteal-sanft', name: 'Lutealphase sanft',
+    note: 'Moderate Last, längere Pausen. Dieselbe Last kann sich jetzt schwerer anfühlen – Anpassung, nicht Verzicht.',
+    items: [
+      ex('goblet-squat', 3, 12, 6, 90),
+      ex('hueftheben', 3, 15, null, 90),
+      ss(3, 90, ex('band-rudern', 3, 15), ex('band-brustpresse', 3, 12)),
+      ex('unterarmstuetz', 2, '30s', null, 60),
+    ],
+  },
+  {
+    id: 'tpl-klettern', name: 'Klettern Zugkraft',
+    note: 'Klimmzugstange und Kurzhantel – für starke Züge an der Wand.',
+    items: [
+      ex('klimmzug', 4, 5, null, 120),
+      ex('rudern-kh', 3, 10, 10, 90),
+      ss(3, 60, ex('beinheben-haengend', 3, 8), ex('hollow-hold', 3, '30s')),
+    ],
+  },
+];
