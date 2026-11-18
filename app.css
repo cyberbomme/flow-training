@@ -433,3 +433,9 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 .t-val i { font: 500 12px var(--font-body); font-style: normal; color: var(--color-text-muted); }
 .tempo-row .t-val { width: 50px; text-align: center; font: 600 22px/1 var(--font-display); }
 [data-pfield="setup"] .t-val { width: 64px; text-align: center; font: 600 28px/1 var(--font-display); }
+
+/* ── Entwurf ─────────────────────────────────── */
+.dirty { color: var(--color-rose-ink); font-weight: 600; }
+.badge.draft { background: var(--color-peach); color: var(--color-text); }
+.save-row { margin-top: 24px; }
+.save-row + .btn.big { margin-top: 12px; }

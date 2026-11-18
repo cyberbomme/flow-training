@@ -41,6 +41,26 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme
 const equipNames = (ex) => ex.equip.length ? ex.equip.map((id) => EQUIPMENT.find((e) => e.id === id).name).join(' + ') : 'Ohne Geräte';
 const planById = (id) => db.plans.find((p) => p.id === id);
 
+// Entwürfe: Änderungen im Editor landen in db.drafts[planId], bis gespeichert oder verworfen wird.
+const draftOf = (id) => db.drafts?.[id];
+const shownPlan = (id) => draftOf(id) || planById(id);
+function editPlan(id) {
+  db.drafts ||= {};
+  if (!db.drafts[id]) { const p = planById(id); if (!p) return null; db.drafts[id] = JSON.parse(JSON.stringify(p)); }
+  return db.drafts[id];
+}
+// Entwurf entfernen, sobald er wieder dem gespeicherten Plan entspricht
+function settleDraft(id) {
+  const d = draftOf(id), p = planById(id);
+  if (d && p && JSON.stringify([d.name, d.items]) === JSON.stringify([p.name, p.items])) delete db.drafts[id];
+}
+function commitDraft(id) {
+  const d = draftOf(id), p = planById(id);
+  if (!d || !p) return;
+  p.name = d.name; p.items = d.items;
+  delete db.drafts[id];
+}
+
 function toast(msg) {
   const t = $('#toast');
   t.textContent = msg; t.classList.add('show');
@@ -186,7 +206,7 @@ const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene',
 
 // ── Katalog ───────────────────────────────────────────────
 function viewCatalog(pickFor) {
-  const plan = pickFor && planById(pickFor);
+  const plan = pickFor && shownPlan(pickFor);
   const head = plan ? header('Übung hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
   return `${head}
     <input class="search" type="search" id="q" placeholder="Übung suchen" value="${esc(catQuery)}" autocomplete="off">
@@ -230,7 +250,7 @@ function viewExercise(id) {
     ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
     ${pill('Zu Plan hinzufügen')}
     <div class="stack">
-      ${db.plans.map((p) => `<button class="btn" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">${icon.plus}${esc(p.name)}</button>`).join('')}
+      ${db.plans.map((p) => `<button class="btn" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">${icon.plus}${esc(shownPlan(p.id).name)}</button>`).join('')}
       <button class="btn ghost" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}Neuer Plan</button>
     </div>`;
 }
@@ -246,7 +266,7 @@ function viewPlans() {
     ${db.plans.map((p) => {
       const est = planEstimate(p), n = est.n;
       return `<div class="plan">
-        <a class="plan-main" href="#/plan/${p.id}"><b>${esc(p.name)}</b><small>${planMeta(est)}</small></a>
+        <a class="plan-main" href="#/plan/${p.id}"><b>${esc(p.name)}</b><small>${planMeta(est)}</small>${draftOf(p.id) ? `<span class="badge draft">Nicht gespeicherte Änderungen</span>` : ''}</a>
         <div class="plan-actions">
           <button class="btn primary" data-act="start" data-plan="${p.id}" ${n ? '' : 'disabled'}>${icon.play}Start</button>
           <button class="btn" data-act="dup-plan" data-plan="${p.id}">Kopieren</button>
@@ -258,20 +278,24 @@ function viewPlans() {
 }
 
 function viewPlanEditor(id) {
-  const p = planById(id);
+  const p = shownPlan(id);
   if (!p) return header('Plan', ['#/plaene', 'Pläne']) + empty('Diesen Plan gibt es nicht (mehr).');
-  const est = planEstimate(p);
+  const est = planEstimate(p), dirty = !!draftOf(id);
   const list = p.items.map((it) => it.type === 'group' ? groupBlock(p, it) : it.type === 'rest' ? restRow(it) : exRow(p, it, null)).join('');
   return `<header class="app-head"><a class="back" href="#/plaene">${icon.back}Pläne</a>
       <div class="head-row"><input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans">${LOGO}</div></header>
-    <p class="sub" id="plan-meta">${planMeta(est)}</p>
+    <p class="sub" id="plan-meta">${planMeta(est)}${dirty ? ' · <span class="dirty">nicht gespeichert</span>' : ''}</p>
     ${p.items.length ? `<p class="hint">Am Griff ziehen zum Sortieren. Auf eine Übung ziehen und kurz halten bildet ein Superset.</p>` : ''}
     <div class="plist" id="plan-list" data-plan="${p.id}">${list || '<p class="hint">Noch leer. Füg Übungen und Pausen hinzu.</p>'}</div>
     <div class="row">
       <a class="btn" href="#/plan/${p.id}/add">${icon.plus}Übung</a>
       <button class="btn peach" data-act="add-rest" data-plan="${p.id}">${icon.plus}Pause</button>
     </div>
-    <button class="btn primary big" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'}>${icon.play}Training starten</button>`;
+    ${dirty ? `<div class="row save-row">
+      <button class="btn ghost" data-act="draft-discard" data-plan="${p.id}">Verwerfen</button>
+      <button class="btn" data-act="draft-save" data-plan="${p.id}">${icon.check}Speichern</button></div>
+    <button class="btn primary big" data-act="save-start" data-plan="${p.id}" ${est.n ? '' : 'disabled'}>${icon.play}Speichern &amp; starten</button>`
+    : `<button class="btn primary big" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'}>${icon.play}Training starten</button>`}`;
 }
 
 // Einheitliche Zeile: Kreis · Name + Werte · Griff. Antippen klappt die Regler auf.
@@ -822,16 +846,17 @@ document.addEventListener('click', (ev) => {
       db.equip = db.equip.length ? [] : EQUIPMENT.map((e) => e.id); save(); render(); break;
     case 'pick': {
       ev.preventDefault();
-      const p = planById(btn.dataset.plan);
+      const p = editPlan(btn.dataset.plan);
       p.items.push(newItem(btn.dataset.ex)); save();
       toast(`${byId[btn.dataset.ex].name} hinzugefügt`);
       go('plan/' + p.id);
       break;
     }
     case 'add-to-plan': {
-      const p = planById(btn.dataset.plan);
+      // Liegt schon ein Entwurf vor, landet die Übung dort – sonst direkt im Plan
+      const p = draftOf(btn.dataset.plan) || planById(btn.dataset.plan);
       p.items.push(newItem(btn.dataset.ex)); save();
-      toast(`Zu „${p.name}“ hinzugefügt`);
+      toast(draftOf(btn.dataset.plan) ? `Zu „${p.name}“ hinzugefügt (noch nicht gespeichert)` : `Zu „${p.name}“ hinzugefügt`);
       break;
     }
     case 'add-to-new': {
@@ -853,11 +878,11 @@ document.addEventListener('click', (ev) => {
     }
     case 'del-plan': {
       const p = planById(btn.dataset.plan);
-      if (confirm(`Plan „${p.name}“ löschen? Der Verlauf bleibt erhalten.`)) { db.plans = db.plans.filter((x) => x !== p); save(); render(); }
+      if (confirm(`Plan „${p.name}“ löschen? Der Verlauf bleibt erhalten.`)) { db.plans = db.plans.filter((x) => x !== p); if (db.drafts) delete db.drafts[p.id]; save(); render(); }
       break;
     }
     case 'add-rest': {
-      const p = planById(btn.dataset.plan);
+      const p = editPlan(btn.dataset.plan);
       p.items.push({ id: uid(), type: 'rest', dur: 90 }); save(); render();
       break;
     }
@@ -868,7 +893,7 @@ document.addEventListener('click', (ev) => {
       break;
     }
     case 'pstep': case 'pmode': case 'punlink': case 'psplit': case 'premove': {
-      const p = planById(planEl.dataset.plan);
+      const p = editPlan(planEl.dataset.plan);
       const id = btn.closest('[data-for]').dataset.for;
       const it = PE.find(p.items, id)?.it;
       if (!it) break;
@@ -881,10 +906,15 @@ document.addEventListener('click', (ev) => {
       if (act === 'punlink') PE.unlink(p.items, id);
       if (act === 'psplit') { PE.split(p.items, id); planOpen = null; }
       if (act === 'premove') { PE.remove(p.items, id); PE.normalize(p.items); planOpen = null; }
-      save(); render();
+      settleDraft(p.id); save(); render();
       break;
     }
     case 'start': startTraining(btn.dataset.plan); break;
+    case 'save-start': commitDraft(btn.dataset.plan); save(); toast('Plan gespeichert'); startTraining(btn.dataset.plan); break;
+    case 'draft-save': commitDraft(btn.dataset.plan); save(); toast('Plan gespeichert'); render(); break;
+    case 'draft-discard':
+      if (confirm('Änderungen an diesem Plan verwerfen?')) { delete db.drafts[btn.dataset.plan]; planOpen = null; save(); render(); }
+      break;
 
     // Training
     case 'stp': {
@@ -960,15 +990,15 @@ document.addEventListener('input', (ev) => {
 document.addEventListener('change', (ev) => {
   const t = ev.target;
   if (t.dataset.planName) {
-    const p = planById(t.dataset.planName); p.name = t.value.trim() || 'Ohne Namen'; save();
+    const p = editPlan(t.dataset.planName); p.name = t.value.trim() || 'Ohne Namen'; settleDraft(p.id); save(); render();
   } else if (t.dataset.pf) {
-    const p = planById(t.closest('[data-plan]').dataset.plan);
+    const p = editPlan(t.closest('[data-plan]').dataset.plan);
     const it = PE.find(p.items, t.closest('[data-for]').dataset.for)?.it;
     if (!it) return;
     const key = t.dataset.pf, v = num(t.value);
     if (key === 'weight') it.weight = v && v > 0 ? v : null;
     else it[key] = Math.max(PLAN_MIN[key] ?? 0, Math.round(v ?? 0));
-    save(); render();
+    settleDraft(p.id); save(); render();
   } else if (t.dataset.cur) {
     const v = num(t.value);
     db.active.cur[t.dataset.cur] = t.dataset.cur === 'weight' ? (v && v > 0 ? v : null) : Math.max(0, v ?? 0);
@@ -994,11 +1024,11 @@ const PLAN_MIN = { sets: 1, rounds: 1, reps: 1, dur: 5, rest: 0 };
 
 // Drag & Drop im Plan-Editor (Sortieren, Superset bilden)
 PE.initDrag((srcId, targetId, pos) => {
-  const p = planById(route()[1]);
+  const p = editPlan(route()[1]);
   if (!p) return;
   const before = PE.find(p.items, srcId)?.parent?.id;
   PE.moveTo(p.items, srcId, targetId, pos, uid);
-  save(); render();
+  settleDraft(p.id); save(); render();
   if (pos === 'merge') toast('Superset gebildet');
   else if (before && !PE.find(p.items, srcId)?.parent) toast('Aus Superset gelöst');
 });
