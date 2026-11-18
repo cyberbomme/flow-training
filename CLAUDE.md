@@ -29,8 +29,7 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Plan-Editor: „···“ oben rechts bleibt immer (Kopieren, Verwerfen, Löschen), wird nie durch „Speichern“ ersetzt.
   Feste Aktionsleiste unten; mit Entwurf „Speichern · Starten“. Starten fragt: „Speichern & starten“ oder „Ohne Speichern starten“ –
   ohne Speichern wird der Entwurf nach Ende oder Abbruch des Trainings automatisch verworfen (`active.tempDraft`).
-- Tab-Leiste: Pläne · Übungen · Verlauf; Start-Seite sind die Pläne. Einstellungen als Zahnrad oben rechts (neben dem Logo),
-  „Zurück“ führt zur zuletzt besuchten Tab-Seite.
+- Tab-Leiste: Pläne · Übungen · Verlauf · Einstellungen; Start-Seite sind die Pläne.
 - Übungen hinzufügen: Mehrfachauswahl, unten „Hinzufügen (n)“.
 - Katalog: eine wischbare Filterzeile (Ausrüstung als Sheet, Muskelgruppen mit Mehrfachauswahl in `db.muscles`).
 
@@ -64,14 +63,9 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   nimmt den Platz von Überspringen mit ein (kein doppelter Knopf). „Satz erledigt“ speichert den Satz, Überspringen nicht.
 - Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
 
-## Branch ux-review – vor dem Merge nach main entfernen
-- `js/demo-seed.js` (erfundener Verlauf) samt Import in `app.js` und Eintrag in `sw.js`; erfundene Einträge tragen `demo: true`.
-- Fenster „Varianten“ (`renderDemo`, `.demo-*`) und `icons/entwurf/`; alles mit `DEMO(ux-review)` markiert.
-- Version hochzählen, ungenutztes CSS (`.ilist`, `.plan`, `.tbl`, `.setting`) aufräumen.
-
 ## Backlog
 - **App-Icon auswählen + Logo-Grafik verbessern** (Wunsch 2026-11-18, noch nicht gebaut):
-  - Vier Icon-Entwürfe liegen vor (A Creme·Salbei – eingebaut, B Creme·Waldgrün, C Salbei·Creme, D Waldgrün·Creme). Entscheidung offen.
+  - Vier Icon-Entwürfe in `docs/icon-entwuerfe/` (A Creme·Salbei – eingebaut, B Creme·Waldgrün, C Salbei·Creme, D Waldgrün·Creme). Entscheidung offen.
   - Idee: Auswahl in den Einstellungen. Achtung: iOS liest das Home-Bildschirm-Icon nur beim „Zum Home-Bildschirm“ –
     eine Änderung wirkt erst nach Entfernen und erneutem Hinzufügen. Alternativ einfach die gewählte Variante fest einbauen.
   - Logo (`js/logo.js`) ist aus einer kleinen Vorlage vektorisiert; feine Fließlinien sind grob. Später durch die

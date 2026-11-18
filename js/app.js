@@ -7,8 +7,6 @@ import * as T from './timer.js';
 import * as PE from './planedit.js';
 import { PAUSE_LINES, DONE_TITLES, QUOTES, SAVE_TOASTS } from './texts.js';
 import { LOGO_VIEWBOX, LOGO_PATH } from './logo.js';
-import { seedDemo } from './demo-seed.js'; // DEMO(ux-review): vor dem Merge entfernen
-if (seedDemo(db)) save();
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -32,10 +30,8 @@ let addSheet = false; // Auswahlfenster „Zu Plan hinzufügen“ auf der Übung
 let showTpl = null;    // Vorlagen aufgeklappt? null = automatisch (offen, solange es keine Pläne gibt)
 let tplSheet = null;   // Vorschau einer Vorlage (ID)
 let planMenu = false;  // „···“-Menü im Plan-Editor
-let startAsk = null;   // Rückfrage vor dem Start mit Entwurf (Plan-ID) – nur Demo-Variante K3 C
+let startAsk = null;   // Rückfrage „Speichern & starten“ / „Ohne Speichern starten“ (Plan-ID)
 
-// DEMO(ux-review): Fenster „Varianten“ (Icon-Entwürfe, Design, Erscheinungsbild). Vor dem Merge entfernen.
-let demoSheet = false;
 let wakeLock = null;
 
 // Designs: alle mit denselben Schriften, Formen und Regeln (docs/DESIGN.md), nur die Farbfamilien wechseln.
@@ -48,9 +44,9 @@ const DESIGNS = [
 ];
 T.setSound(db.sound);
 // Muskelgruppen-Filter: Mehrfachauswahl (früher ein einzelner Wert in db.muscle)
-if (!Array.isArray(db.muscles)) { db.muscles = db.muscle ? [db.muscle] : []; delete db.muscle; }
+if (!Array.isArray(db.muscles)) { db.muscles = db.muscle ? [db.muscle] : []; delete db.muscle; save(); }
 // Design „Klassisch“ gibt es nicht mehr
-if (!DESIGNS.some((d) => d.id === db.design)) db.design = 'flow';
+if (!DESIGNS.some((d) => d.id === db.design)) { db.design = 'flow'; save(); }
 
 // Design (DESIGNS) und Erscheinungsbild ('system' | 'light' | 'dark').
 // Kopie in localStorage für das Inline-Skript im <head> (kein Aufblitzen beim Start).
@@ -175,7 +171,6 @@ const icon = {
   trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5M14 11v5"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
   x: '<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>',
-  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.6 2.4 2.8-.6.6 2.8 2.4 1.6-1.3 2.5 1.3 2.5-2.4 1.6-.6 2.8-2.8-.6L12 21.2l-1.6-2.4-2.8.6-.6-2.8-2.4-1.6L5.9 12 4.6 9.5 7 7.9l.6-2.8 2.8.6z"/></svg>',
   bellOff: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></svg>',
 };
 
@@ -205,8 +200,7 @@ function pickText(pool, salt, i = 0) {
 
 // AppHeader: Titel links, Signet rechts, dünne Linie darunter
 // right: Element statt Signet (z. B. „···“ oder ein Link)
-const TOP = `<div class="head-r">${LOGO}<a class="icon-btn" href="#/einstellungen" aria-label="Einstellungen">${icon.gear}</a></div>`;
-const header = (title, back, right = back ? LOGO : TOP) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
+const header = (title, back, right = LOGO) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
   <div class="head-row"><h1>${esc(title)}</h1>${right}</div></header>`;
 const more = (t) => `<span class="more">${esc(t)}${icon.chev}</span>`;
 const pill = (t) => `<h2 class="pill-label">${t}</h2>`;
@@ -250,37 +244,15 @@ function render() {
   if (view === 'training') startTicker();
   manageWakeLock(view === 'training');
 
-  if (tabOf(view)) lastTop = tabOf(view);
   $$('.tabbar a').forEach((t) => t.classList.toggle('on', t.dataset.tab === tabOf(view)));
   const banner = $('#resume');
   banner.hidden = !db.active || view === 'training';
   if (db.active) $('#resume-name').textContent = db.active.planName;
 
   if (location.hash !== lastHash) { window.scrollTo(0, 0); lastHash = location.hash; }
-  renderDemo();
 }
 
-// DEMO(ux-review): Knopf „Varianten“ + Auswahlfenster in einer eigenen Ebene. Vor dem Merge entfernen.
-function renderDemo() {
-  let el = $('#demo-layer');
-  if (!el) { el = document.createElement('div'); el.id = 'demo-layer'; document.body.append(el); }
-  const seg = (k, opts, cur) => `<div class="demo-opts">${opts.map(([v, l]) =>
-    `<button class="${cur === v ? 'on' : ''}" data-act="demo-set" data-k="${k}" data-v="${v}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`;
-  el.innerHTML = `<button class="demo-btn" data-act="demo-open">Varianten</button>` + (demoSheet ? `<div class="sheet-bg" data-act="demo-close"></div>
-    <div class="sheet demo-sheet" role="dialog" aria-label="Varianten">
-      <div class="sheet-head"><p class="serif">Varianten</p><button class="link" data-act="demo-close">Fertig</button></div>
-      <p class="sheet-hint">Nur in dieser Demo. Die Auswahl gilt sofort auf allen Seiten.</p>
-      <p class="demo-l">App-Icon (Entwürfe, eingebaut ist A)</p>
-      <div class="demo-icons">${[['a', 'Creme · Salbei'], ['b', 'Creme · Waldgrün'], ['c', 'Salbei · Creme'], ['d', 'Waldgrün · Creme']].map(([k, l]) =>
-        `<figure><img src="icons/entwurf/icon-${k}.png" alt="Icon-Entwurf ${k.toUpperCase()}"><figcaption>${k.toUpperCase()} · ${l}</figcaption></figure>`).join('')}</div>
-      <p class="demo-l">Design</p>${seg('design', DESIGNS.map((d) => [d.id, d.name]), db.design || 'flow')}
-      <p class="demo-l">Erscheinungsbild</p>${seg('theme', [['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']], db.theme || 'system')}
-    </div>` : '');
-}
-// Letzte Tab-Seite merken – dorthin führt „Zurück“ aus den Einstellungen
-let lastTop = 'plaene';
-const BACK_FROM_SETTINGS = { plaene: ['#/plaene', 'Pläne'], katalog: ['#/katalog', 'Übungen'], verlauf: ['#/verlauf', 'Verlauf'] };
-const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf', einstellungen: null })[v];
+const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf', einstellungen: 'einstellungen' })[v];
 
 // ── Katalog ───────────────────────────────────────────────
 function viewCatalog(pickFor) {
@@ -371,6 +343,7 @@ const catText = (name, label) => label && !name.toLowerCase().includes(label.toL
 
 // ── Pläne ─────────────────────────────────────────────────
 function viewPlans() {
+  const add = `<button class="icon-btn head-btn" data-act="new-plan" aria-label="Neuer Plan">${icon.plus}</button>`;
   const top = !db.plans.length
     ? empty('Noch kein Training geplant.', 'Starte mit deinem Körper, nicht gegen ihn – mit einer Vorlage oder einem eigenen Plan.',
       `<button class="btn primary" data-act="new-plan">${icon.plus}Eigenen Plan anlegen</button>`)
@@ -379,9 +352,8 @@ function viewPlans() {
       const ic = `<span class="ic-wrap">${planIc(p)}${draftOf(p.id) ? '<i class="draft-dot" aria-label="Nicht gespeicherte Änderungen"></i>' : ''}</span>`;
       return lrow({ attrs: `href="#/plan/${p.id}"`, ic, title: esc(p.name), sub: catText(p.name, planLabel(p)) + planMeta(est), right: '',
         after: `<button class="play-btn" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'} aria-label="${esc(p.name)} starten">${icon.play}</button>` });
-    }).join('')}</div>
-    <button class="btn new-plan" data-act="new-plan">${icon.plus}Neuer Plan</button>`;
-  return header('Pläne') + top + templatesBlock() + (tplSheet ? templateSheet(tplSheet) : '');
+    }).join('')}</div>`;
+  return header('Pläne', null, add) + top + templatesBlock() + (tplSheet ? templateSheet(tplSheet) : '');
 }
 
 const tplEquip = (exs) => {
@@ -952,8 +924,7 @@ function viewTempo() {
 function viewSettings() {
   const theme = db.theme || 'system', design = db.design || 'flow';
   const sw = (act, on, label) => `<input type="checkbox" role="switch" class="switch" data-act="${act}" ${on ? 'checked' : ''} aria-label="${label}">`;
-  const [h, l] = BACK_FROM_SETTINGS[lastTop] || BACK_FROM_SETTINGS.plaene;
-  return header('Einstellungen', [h, l]) + `
+  return header('Einstellungen') + `
     ${pill('Aussehen')}
     <div class="design-opts" role="radiogroup" aria-label="Design">${DESIGNS.map((d) => `
       <button class="design-opt ${design === d.id ? 'on' : ''}" data-act="design" data-design="${d.id}" role="radio" aria-checked="${design === d.id}">
@@ -1269,13 +1240,6 @@ document.addEventListener('click', (ev) => {
 
     // Verlauf
     case 'metric': metricSel = btn.dataset.k; render(); break;
-    case 'demo-open': demoSheet = true; renderDemo(); break;
-    case 'demo-close': demoSheet = false; renderDemo(); break;
-    case 'demo-set': {
-      const { k, v } = btn.dataset;
-      db[k] = v; save(); applyTheme();
-      render(); break;
-    }
     case 'all-ex': showAllEx = !showAllEx; render(); break;
     case 'theme': db.theme = btn.dataset.theme; save(); applyTheme(); render(); break;
     case 'design': db.design = btn.dataset.design; save(); applyTheme(); render(); break;

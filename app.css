@@ -136,14 +136,11 @@ svg .fill { fill: currentColor; stroke: none; }
 .icon-btn { width: 40px; height: 40px; display: grid; place-items: center; border: 0; background: var(--color-fill); color: var(--color-text); border-radius: 50%; padding: 0; cursor: pointer; }
 .icon-btn svg { width: 18px; height: 18px; stroke-width: 1.8; }
 .icon-btn:disabled { opacity: .3; }
-.stack { display: grid; gap: 12px; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
 
 /* ── Suche & Filter-Pills ────────────────────── */
 .search { width: 100%; font: 16px var(--font-body); padding: 13px 20px; border-radius: 999px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-text); }
 .search::placeholder { color: var(--color-text-muted); }
-.filter-label { display: flex; justify-content: space-between; align-items: center; margin: 24px 0 8px; }
-.filter-label .overline { margin: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .chip { border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-text); border-radius: 999px; padding: 8px 16px; font: 500 14px var(--font-body); cursor: pointer; }
 .chip.on { background: var(--color-sage-light); border-color: var(--color-sage-light); font-weight: 600; }
@@ -181,12 +178,6 @@ svg .fill { fill: currentColor; stroke: none; }
 .ic-circle.sm { width: 44px; height: 44px; }
 
 /* ── Übungsliste ─────────────────────────────── */
-.ilist { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
-.ilist-item { display: flex; align-items: center; gap: 16px; padding: 12px 16px 12px 12px; background: var(--color-surface); border-radius: var(--r-card); color: var(--color-text); font-weight: 400; }
-.ilist-item:active { transform: scale(.99); }
-.ilist-text { flex: 1; min-width: 0; }
-.ilist-text b { font-weight: 600; display: block; line-height: 1.3; }
-.ilist-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { display: inline-block; margin-top: 6px; font: 600 11px/1 var(--font-body); letter-spacing: .06em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: var(--color-fill); color: var(--color-text-muted); }
 .chev { color: var(--color-text-muted); flex: none; }
 .chev svg { width: 18px; height: 18px; }
@@ -209,12 +200,6 @@ svg .fill { fill: currentColor; stroke: none; }
 .row-link .more { color: var(--color-forest); font-weight: 600; white-space: nowrap; }
 
 /* ── Pläne ───────────────────────────────────── */
-.plan { background: var(--color-surface); border-radius: var(--r-card); padding: 20px; }
-.plan-main { display: block; color: var(--color-text); margin-bottom: 16px; font-weight: 400; }
-.plan-main b { font: 600 22px/1.2 var(--font-display); text-transform: var(--display-case); letter-spacing: var(--display-track); display: block; margin-bottom: 4px; }
-.plan-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.plan-actions .btn { min-height: 42px; padding: 0 16px; }
-.plan-actions .btn.primary { flex: 1; }
 
 /* ── Plan-Editor: eine Zeile für Übung, Pause, Superset-Mitglied ── */
 .plist { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
@@ -291,16 +276,8 @@ body[data-view="training"] { padding-bottom: calc(env(safe-area-inset-bottom) + 
 
 .ring-bg { stroke: var(--color-fill); stroke-width: 6; }
 .ring { stroke: var(--color-forest); stroke-width: 6; transition: stroke-dashoffset .2s linear; }
-.next b { color: var(--color-text); font-weight: 600; }
-.tr-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; }
-.tr-nav .btn { flex: 1; }
 
 /* Abschluss / QuoteCard */
-.list { list-style: none; padding: 0; margin: 16px 0; text-align: left; background: var(--color-surface); border-radius: var(--r-card); }
-.list li { padding: 14px 18px; border-top: 1px solid var(--color-line); }
-.list li:first-child { border-top: 0; }
-.list li a { display: flex; gap: 14px; align-items: center; color: var(--color-text); font-weight: 400; }
-.list b { font-weight: 600; }
 
 .sheet-bg { position: fixed; inset: 0; background: var(--color-overlay); z-index: 30; }
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; background: var(--color-surface); border-radius: var(--r-box) var(--r-box) 0 0; padding: 24px 16px calc(20px + env(safe-area-inset-bottom)); display: grid; gap: 10px; max-width: 640px; margin: 0 auto; text-align: center; }
@@ -318,16 +295,6 @@ body[data-view="training"] { padding-bottom: calc(env(safe-area-inset-bottom) + 
 .empty .btn { margin-top: 16px; }
 
 /* ── Verlauf ─────────────────────────────────── */
-.list-links { background: var(--color-surface); border-radius: var(--r-card); overflow: hidden; }
-.list-links a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; color: var(--color-text); font-weight: 500; border-top: 1px solid var(--color-line); }
-.list-links a:first-child { border-top: 0; }
-.list-links small { text-align: right; flex: none; font-size: 13px; }
-.setting { background: var(--color-surface); border-radius: var(--r-card); padding: 14px 18px; }
-.setting > span { font-weight: 500; }
-.setting .seg { margin: 10px 0 0; --n: 3; }
-.toggle { display: flex; justify-content: space-between; align-items: center; }
-.toggle input { flex: none; width: 22px; height: 22px; accent-color: var(--color-forest); }
-label.btn { cursor: pointer; }
 
 .chart { position: relative; background: var(--color-surface); border-radius: var(--r-card); margin-bottom: 16px; touch-action: pan-y; padding-top: 4px; }
 .chart svg { display: block; }
@@ -340,15 +307,11 @@ label.btn { cursor: pointer; }
 .chart .hit { fill: transparent; stroke: none; }
 .tip { position: absolute; pointer-events: none; background: var(--color-text); color: var(--color-bg); border-radius: 12px; padding: 8px 12px; font-size: 13px; max-width: 230px; box-shadow: var(--shadow-soft); }
 .tip small { color: inherit; opacity: .8; font-size: 12px; }
-.tbl { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--color-surface); border-radius: var(--r-card); overflow: hidden; }
-.tbl th, .tbl td { text-align: left; padding: 10px 12px; border-top: 1px solid var(--color-line); vertical-align: top; }
-.tbl th { color: var(--color-text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; border-top: 0; }
-.tbl td:nth-child(2) { font: 600 18px/1.2 var(--font-display); white-space: nowrap; }
 
 /* ── Tabbar & Banner ─────────────────────────── */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   height: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
   background: color-mix(in srgb, var(--color-bg) 90%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--color-line);
@@ -400,8 +363,6 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 .next-txt .next-over { font: 600 11px/1.3 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--color-forest); }
 
 /* ── Zeiten (Autopilot) ──────────────────────── */
-.setting.toggle > span small { display: block; font-size: 13px; font-weight: 400; margin-top: 2px; }
-.setting.toggle { gap: 12px; }
 .tempo-row { display: flex; align-items: center; gap: 12px; background: var(--color-surface); border-radius: var(--r-card); padding: 8px 8px 8px 10px; }
 .tempo-row .stepper { flex: none; gap: 2px; }
 .tempo-row .stepper button { width: 38px; height: 38px; }
@@ -412,9 +373,6 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 
 /* ── Entwurf ─────────────────────────────────── */
 .dirty { color: var(--color-rose-ink); font-weight: 600; }
-.badge.draft { background: var(--color-peach); color: var(--color-text); }
-.save-row { margin-top: 24px; }
-.save-row + .btn.big { margin-top: 12px; }
 
 /* ── Trainingsseiten: ein Gerüst, feste Höhen je Platz (Konzept A) ── */
 .tr-screen { text-align: center; }
@@ -434,7 +392,6 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 .tr-screen .next-card { height: 72px; margin-top: 12px; }
 .next-card.quote { justify-content: center; text-align: center; font: 400 18px/1.3 var(--font-serif); padding: 8px 20px; }
 .tr-screen .tr-nav { margin-top: 12px; }
-.tr-nav .danger-text { color: var(--color-rose-ink); }
 .empty .leaf { color: var(--color-rose); width: 72px; height: 72px; margin: 8px auto 0; display: block; }
 .empty .leaf svg { width: 100%; height: 100%; stroke-width: 1.2; }
 .tr-screen .t-val { min-width: 76px; text-align: center; font: 600 32px/1 var(--font-display); font-variant-numeric: tabular-nums; }
@@ -454,23 +411,11 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 .plan-ic.rose { color: var(--color-rose-ink); }
 .ic-circle.xs { width: 28px; height: 28px; }
 .ic-circle.xs > svg { width: 16px; height: 16px; }
-.plan-main { display: flex; align-items: center; gap: 14px; }
-.plan-txt { flex: 1; min-width: 0; }
 .plan-sub { display: flex; align-items: center; gap: 10px; }
-.list-links a.with-ic { justify-content: flex-start; }
-.list-links a.with-ic > span { flex: 1; min-width: 0; }
 .sheet-row .ic-circle { flex: none; }
 .sheet-row > span { flex: 1; min-width: 0; }
 
 /* ── Vorlagen ────────────────────────────────── */
-.tpl-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: none; padding: 0; margin-top: 8px; cursor: pointer; font: inherit; color: inherit; }
-.tpl-toggle .more { color: var(--color-forest); font-weight: 600; font-size: 14px; }
-.plan.tpl { background: transparent; border: 1px solid var(--color-line); }
-.plan.tpl .plan-main { margin-bottom: 8px; }
-.tpl-equip { margin-top: 2px; }
-.tpl-note { margin: 0 0 14px; font-size: 14px; color: var(--color-text-muted); }
-.tpl-taken { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-text-muted); }
-.tpl-taken svg { width: 16px; height: 16px; color: var(--color-forest); stroke-width: 2; }
 
 /* ── Baukasten (UX-Review) ───────────────────── */
 /* Listenzeile: Kreis-Icon · Titel · eine Unterzeile · rechts ein Element */
@@ -576,24 +521,9 @@ body:has(.actionbar) #resume { bottom: calc(var(--tabbar-h) + env(safe-area-inse
 /* Einstellungen K5 */
 .about .link { font-size: 14px; }
 
-/* DEMO(ux-review): Varianten-Schalter */
-.demo-btn { position: fixed; z-index: 25; right: 0; top: 46%; transform: translateY(-50%) rotate(180deg); writing-mode: vertical-rl; border: 0; border-radius: 0 10px 10px 0; padding: 12px 6px; background: var(--color-text); color: var(--color-bg); font: 600 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; opacity: .55; cursor: pointer; }
-.demo-sheet { text-align: left; max-height: 88vh; overflow: auto; z-index: 61; }
-#demo-layer .sheet-bg { z-index: 60; }
-.demo-l { margin: 8px 0 0; font: 600 12px/1.3 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--color-text-muted); }
-.demo-opts { display: flex; flex-wrap: wrap; gap: 6px; }
-.demo-opts button { border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-text); border-radius: 999px; padding: 8px 14px; font: 500 14px var(--font-body); cursor: pointer; }
-.demo-opts button.on { background: var(--color-forest); border-color: var(--color-forest); color: var(--color-on-forest); font-weight: 600; }
-
 /* Mehrfachauswahl beim Hinzufügen */
 .lrow.sel { box-shadow: inset 0 0 0 2px var(--color-forest); }
 .pick-ck { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--color-line); display: grid; place-items: center; color: var(--color-on-forest); }
 .pick-ck svg { width: 16px; height: 16px; stroke-width: 2.4; }
 .lrow.sel .pick-ck { background: var(--color-forest); border-color: var(--color-forest); }
 .actionbar.pick { grid-template-columns: auto 1fr; }
-.demo-icons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.demo-icons figure { margin: 0; text-align: center; }
-.demo-icons img { width: 100%; aspect-ratio: 1; border-radius: 22%; display: block; box-shadow: var(--shadow-soft); }
-.demo-icons figcaption { font-size: 11px; color: var(--color-text-muted); margin-top: 4px; line-height: 1.3; }
-.head-r { flex: none; display: flex; align-items: center; gap: 10px; }
-.btn.new-plan { width: 100%; margin-top: 12px; }
