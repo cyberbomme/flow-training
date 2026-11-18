@@ -153,25 +153,33 @@ function figureAt(ex, t) {
   return propsSVG(ex.props || [], J) + bodySVG(J);
 }
 
-// Animiert zwischen den Posen; liefert Stop-Funktion
-export function animateFigure(el, ex) {
+// Verlauf einer Wiederholung über die Phase p ∈ [0,1): kurz halten, hin, kurz halten, zurück.
+// Ein Zyklus = eine Wiederholung, damit Animation und Tempo der Übung übereinstimmen.
+const HOLD = 0.12;
+const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+function poseAt(p) {
+  const move = 0.5 - HOLD;
+  if (p < HOLD) return 0;
+  if (p < 0.5) return ease((p - HOLD) / move);
+  if (p < 0.5 + HOLD) return 1;
+  return 1 - ease((p - 0.5 - HOLD) / move);
+}
+
+// Animiert zwischen den Posen; liefert Stop-Funktion.
+// period: Sekunden pro Wiederholung. phase(): optional, liefert die Phase vom Trainings-Timer
+// (0…1) oder null = in Startpose halten (Vorlauf, noch nicht gestartet).
+export function animateFigure(el, ex, { period = 3, phase } = {}) {
   const P = posesOf(ex);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (P.length === 1 || reduce) { el.innerHTML = figureStatic(ex); return () => {}; }
   el.innerHTML = frame(ex, '<g class="anim"></g>');
   const g = el.querySelector('.anim');
-  const hold = 450, move = 1100, cycle = 2 * (hold + move);
-  const ease = (x) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-  let raf, start = performance.now(), stopped = false;
+  let raf, start = performance.now(), stopped = false, last = -1;
   const tick = (now) => {
     if (stopped || !el.isConnected) return;
-    const c = (now - start) % cycle;
-    let t;
-    if (c < hold) t = 0;
-    else if (c < hold + move) t = ease((c - hold) / move);
-    else if (c < 2 * hold + move) t = 1;
-    else t = 1 - ease((c - 2 * hold - move) / move);
-    g.innerHTML = figureAt(ex, t);
+    const ph = phase ? phase() : (((now - start) / 1000) / period) % 1;
+    const t = ph == null ? 0 : poseAt(ph);
+    if (Math.abs(t - last) > 0.002) { g.innerHTML = figureAt(ex, t); last = t; }
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);

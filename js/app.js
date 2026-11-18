@@ -189,7 +189,12 @@ function render() {
   main.innerHTML = html;
   document.body.dataset.view = view;
 
-  for (const el of $$('[data-anim]', main)) stops.push(animateFigure(el, byId[el.dataset.anim]));
+  // Animation im Tempo der Übung; im Training mit Timer exakt im Takt der Wiederholungen
+  for (const el of $$('[data-anim]', main)) {
+    const id = el.dataset.anim;
+    const synced = view === 'training' && !!db.active?.timer;
+    stops.push(animateFigure(el, byId[id], { period: tempoOf(id), phase: synced ? () => trainingPhase(id) : undefined }));
+  }
   if (view === 'katalog' || (view === 'plan' && b === 'add')) renderCatalogList(b === 'add' ? a : null);
   if (view === 'fortschritt') drawChart();
   if (view === 'training') startTicker();
@@ -511,6 +516,16 @@ function stepper(key, label, val, step, ph = '') {
 
 // Zeit-Übung: Countdown-Ring liegt auf dem Figur-Kreis, die Bedienung sitzt im Regler-Platz
 // der Wiederholungs-Übungen – so bleibt der Bildaufbau bei beiden Übungsarten identisch.
+// Phase der laufenden Wiederholung (0…1) für die Animation; null = Startpose halten
+function trainingPhase(exId) {
+  const t = db.active?.timer;
+  if (!t) return null;
+  const z = timerState(t);
+  if (z.setupLeft > 0 || (!t.running && z.wr >= z.work)) return null;
+  const tempo = t.tempo || tempoOf(exId);
+  return ((z.work - z.wr) % tempo) / tempo;
+}
+
 // Timer-Zustand mit Vorlauf: total = setup + work. Im Vorlauf steht der Ring voll.
 function timerState(t) {
   const r = T.remaining(t), work = t.total - (t.setup || 0);
@@ -669,7 +684,7 @@ function viewTempo() {
       <button data-act="tempo" data-d="0.5" aria-label="${esc(ex.name)} langsamer">+</button></div></div>`;
   };
   return header('Zeiten', ['#/einstellungen', 'Einstellungen']) + `
-    <p class="sub">Im Autopilot zählt flow.training die Wiederholungen in diesem Tempo herunter. Die Werte sind Schätzungen für eine ruhige, kontrollierte Ausführung – pass sie an dein Tempo an.</p>
+    <p class="sub">Im Autopilot zählt flow.training die Wiederholungen in diesem Tempo herunter. Die Animation der Übung läuft im selben Tempo. Die Werte sind Schätzungen für eine ruhige, kontrollierte Ausführung – pass sie an dein Tempo an (1–8 s).</p>
     ${pill('Vorlauf')}
     <div class="stepper-wrap" data-pfield="setup"><span>Vor einem Satz ohne Pause davor</span><div class="stepper">
       <button data-act="setup" data-d="-1" aria-label="Vorlauf kürzer">−</button><output class="t-val">${fmtNum(db.setup ?? 5)}<i> s</i></output>
@@ -961,7 +976,7 @@ document.addEventListener('click', (ev) => {
     case 'design': db.design = btn.dataset.design; save(); applyTheme(); render(); break;
     case 'tempo': {
       const id = btn.closest('[data-ex]').dataset.ex;
-      const v = Math.min(10, Math.max(0.5, tempoOf(id) + +btn.dataset.d));
+      const v = Math.min(8, Math.max(1, tempoOf(id) + +btn.dataset.d));
       db.tempo = { ...(db.tempo || {}) };
       if (v === (TEMPO[id] ?? 3)) delete db.tempo[id]; else db.tempo[id] = v;
       save(); render(); break;
