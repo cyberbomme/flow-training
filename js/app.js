@@ -22,12 +22,13 @@ let wakeLock = null;
 
 T.setSound(db.sound);
 
-// Erscheinungsbild: 'system' | 'light' | 'dark'. Kopie in localStorage für das Inline-Skript im <head> (kein Aufblitzen).
+// Design ('flow' | 'classic') und Erscheinungsbild ('system' | 'light' | 'dark').
+// Kopie in localStorage für das Inline-Skript im <head> (kein Aufblitzen beim Start).
 function applyTheme() {
-  const t = db.theme || 'system';
-  if (t === 'system') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = t;
-  try { localStorage.setItem('flow.theme', t); } catch {}
+  const t = db.theme || 'system', d = db.design || 'flow', root = document.documentElement;
+  if (t === 'system') delete root.dataset.theme; else root.dataset.theme = t;
+  if (d === 'flow') delete root.dataset.design; else root.dataset.design = d;
+  try { localStorage.setItem('flow.theme', t); localStorage.setItem('flow.design', d); } catch {}
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim();
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
 }
@@ -151,6 +152,7 @@ function render() {
   else if (view === 'verlauf' && a) html = viewSession(a);
   else if (view === 'verlauf') html = viewHistory();
   else if (view === 'fortschritt') html = viewProgress(a);
+  else if (view === 'einstellungen') html = viewSettings();
   else { go('katalog'); return; }
   main.innerHTML = html;
   document.body.dataset.view = view;
@@ -168,7 +170,7 @@ function render() {
 
   if (location.hash !== lastHash) { window.scrollTo(0, 0); lastHash = location.hash; }
 }
-const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf' })[v];
+const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf', einstellungen: 'einstellungen' })[v];
 
 // ── Katalog ───────────────────────────────────────────────
 function viewCatalog(pickFor) {
@@ -494,24 +496,42 @@ function exerciseStats() {
 function viewHistory() {
   const sessions = [...db.history].sort((a, b) => b.date - a.date);
   const stats = exerciseStats();
-  const theme = db.theme || 'system';
   return header('Verlauf') + `
     ${!sessions.length ? empty('Kraft ist mehr als Optik.', 'Nach deinem ersten gespeicherten Training siehst du hier deinen Fortschritt.',
       `<a class="btn primary" href="#/plaene">Zu deinen Plänen</a>`) : `
     ${pill('Fortschritt je Übung')}
     <div class="list-links">${stats.map(([id, s]) => `<a href="#/fortschritt/${id}"><span>${esc(byId[id].name)}</span><small>${s.n}× · ${fmtDate(s.last)}</small></a>`).join('')}</div>
     ${pill('Trainings')}
-    <div class="list-links">${sessions.map((s) => `<a href="#/verlauf/${s.id}"><span>${esc(s.planName)}</span><small>${fmtDate(s.date, { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</small></a>`).join('')}</div>`}
-    ${pill('Einstellungen &amp; Daten')}
+    <div class="list-links">${sessions.map((s) => `<a href="#/verlauf/${s.id}"><span>${esc(s.planName)}</span><small>${fmtDate(s.date, { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</small></a>`).join('')}</div>`}`;
+}
+
+// ── Einstellungen ─────────────────────────────────────────
+const DESIGNS = [
+  { id: 'flow', name: 'flow.training', note: 'Creme, Salbei & Rosé', sw: ['#F3F0EB', '#9DAA96', '#D4A19C', '#3F6B5C'] },
+  { id: 'classic', name: 'Klassisch', note: 'Das ursprüngliche Design', sw: ['#F4F2EE', '#EBE8E2', '#1C7C74', '#E8590C'] },
+];
+
+function viewSettings() {
+  const theme = db.theme || 'system', design = db.design || 'flow';
+  return header('Einstellungen') + `
+    ${pill('Design')}
+    <div class="design-opts" role="radiogroup" aria-label="Design">${DESIGNS.map((d) => `
+      <button class="design-opt ${design === d.id ? 'on' : ''}" data-act="design" data-design="${d.id}" role="radio" aria-checked="${design === d.id}">
+        <span class="sw">${d.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>
+        <b class="sample-${d.id}">${d.name}</b><small>${d.note}</small></button>`).join('')}</div>
+    ${pill('Erscheinungsbild')}
+    <div class="setting"><div class="seg" role="radiogroup" aria-label="Erscheinungsbild">${[['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) =>
+      `<button class="${theme === k ? 'on' : ''}" data-act="theme" data-theme="${k}" role="radio" aria-checked="${theme === k}">${l}</button>`).join('')}</div></div>
+    ${pill('Training')}
+    <label class="setting toggle"><span>Ton beim Timer</span><input type="checkbox" data-act="sound-cb" ${db.sound ? 'checked' : ''}></label>
+    ${pill('Daten')}
     <div class="stack">
-      <div class="setting"><span>Erscheinungsbild</span>
-        <div class="seg" role="radiogroup">${[['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) =>
-          `<button class="${theme === k ? 'on' : ''}" data-act="theme" data-theme="${k}" role="radio" aria-checked="${theme === k}">${l}</button>`).join('')}</div></div>
-      <label class="setting toggle"><span>Ton beim Timer</span><input type="checkbox" data-act="sound-cb" ${db.sound ? 'checked' : ''}></label>
       <button class="btn" data-act="export">Daten exportieren (JSON)</button>
       <label class="btn ghost">Daten importieren<input type="file" accept="application/json,.json" id="import" hidden></label>
       <p class="hint">Deine Daten liegen nur auf diesem Gerät. Exportier sie ab und zu, dann gehen sie nicht verloren.</p>
-    </div>`;
+    </div>
+    <div class="about">${LOGO}<div class="ver">flow.training ${esc(self.APP_VERSION || '')}</div>
+      <a href="https://github.com/cyberbomme/flow-training" target="_blank" rel="noopener">Quellcode auf GitHub</a></div>`;
 }
 
 function viewSession(id) {
@@ -734,6 +754,7 @@ document.addEventListener('click', (ev) => {
     // Verlauf
     case 'metric': metricSel = btn.dataset.k; render(); break;
     case 'theme': db.theme = btn.dataset.theme; save(); applyTheme(); render(); break;
+    case 'design': db.design = btn.dataset.design; save(); applyTheme(); render(); break;
     case 'del-session':
       if (confirm('Dieses Training aus dem Verlauf löschen?')) { db.history = db.history.filter((s) => s.id !== btn.dataset.id); save(); go('verlauf'); }
       break;

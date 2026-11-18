@@ -11,8 +11,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="flow.training">
   <script>
-    try { var t = localStorage.getItem('flow.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+    try {
+      var t = localStorage.getItem('flow.theme'), d = localStorage.getItem('flow.design');
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      if (d === 'classic') document.documentElement.dataset.design = d;
+    } catch (e) {}
   </script>
+  <script src="js/version.js"></script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -31,6 +36,7 @@
     <a href="#/katalog" data-tab="katalog"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.5v6M7 10.5h10M12 13.5l-3.5 6M12 13.5l3.5 6"/></svg>Übungen</a>
     <a href="#/plaene" data-tab="plaene"><svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="3"/><path d="M9 8.5h6M9 12h6M9 15.5h4"/></svg>Pläne</a>
     <a href="#/verlauf" data-tab="verlauf"><svg viewBox="0 0 24 24"><path d="M4 19.5h16M6 16l4-5 3.5 3 5-7"/></svg>Verlauf</a>
+    <a href="#/einstellungen" data-tab="einstellungen"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>Einstellungen</a>
   </nav>
 
   <div id="toast" role="status"></div>

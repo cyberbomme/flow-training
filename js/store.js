@@ -11,6 +11,7 @@ function defaults() {
     equip: EQUIPMENT.map((e) => e.id),
     sound: true,
     theme: 'system',
+    design: 'flow',
     plans: [samplePlan()],
     history: [],
     active: null,

@@ -1,8 +1,9 @@
 // Offline-Cache: stale-while-revalidate – Updates erscheinen beim nächsten Öffnen.
-const CACHE = 'flow-training-v2';
+importScripts('js/version.js');
+const CACHE = 'flow-training-' + self.APP_VERSION;
 const SHELL = [
   './', 'index.html', 'app.css', 'manifest.webmanifest',
-  'js/app.js', 'js/exercises.js', 'js/figure.js', 'js/store.js', 'js/timer.js',
+  'js/app.js', 'js/version.js', 'js/exercises.js', 'js/figure.js', 'js/store.js', 'js/timer.js',
   'icons/icon.svg', 'fonts/oswald-var.woff2', 'fonts/montserrat-var.woff2', 'fonts/gilda-display-400.woff2', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 

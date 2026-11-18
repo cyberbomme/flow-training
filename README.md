@@ -11,7 +11,10 @@ Trainingspläne mit Timer und Ton, Verlauf mit Fortschrittsdiagramm. Kein Build-
 - `js/figure.js` – Strichfiguren: Posen aus Gelenkwinkeln (0° = oben, 90° = vorn) oder IK-Zielen für Hände `w` / Füße `a`.
 - `js/app.js` – Ansichten, Router (`#/…`), Training, Verlauf, Diagramm.
 - `js/timer.js` – zeitstempelbasierter Timer, WebAudio-Töne.
+- `js/version.js` – Versionsnummer (App + Cache-Name).
 - `sw.js` – Offline-Cache (stale-while-revalidate). Bei neuen Dateien in `SHELL` eintragen.
+
+Live: https://cyberbomme.github.io/flow-training/
 
 ## Lokal starten
     python3 -m http.server 8000   # → http://localhost:8000
