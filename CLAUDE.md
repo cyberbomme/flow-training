@@ -45,6 +45,15 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
 
 ## Backlog
+- **Zyklusphase als Plan-Parameter** (Wunsch 2026-11-18, noch nicht gebaut):
+  - Im Trainingsplan eine Zyklusphase wählbar machen (Menstruation, Follikelphase, Eisprung, Lutealphase);
+    daraus passen sich Intensität (Gewicht) und Wiederholungen automatisch an.
+  - **Formel wird gemeinsam mit der Besitzerin erarbeitet – nicht selbst festlegen.** Bis dahin nur Konzept/Platzhalter.
+  - Optional: Variation von Übungen je Phase (z. B. Alternativen mit weniger Belastung).
+  - Überlegung: alle zyklusbasierten Funktionen in den Einstellungen gesammelt an-/abschaltbar
+    (betrifft dann auch Zyklus-Stichworte bei Plan-Icons und Vorlagen).
+  - Anknüpfungspunkte: Plan-Icons erkennen Phasen schon am Titel (`js/planicon.js`), Vorlagen Follikel/Luteal (`js/templates.js`).
+    Microcopy vorsichtig formulieren (DESIGN.md §7, „Anpassung – nicht Verzicht“).
 - **Export nach WHOOP Strength Trainer** (geprüft 2026-11-18, noch nicht gebaut):
   - WHOOP hat keine öffentliche Schreib-API (Developer-API v2 nur lesend). Inoffizielle private API (z. B. hevy2whoop) verstößt gegen die WHOOP-AGB → nicht nutzen.
   - Gangbarer Weg über Strava: Strava nimmt seit 21.05.2026 Kraft-Sätze an (`POST /api/v3/uploads`, `data_type=json`, Scope `activity:write`,
