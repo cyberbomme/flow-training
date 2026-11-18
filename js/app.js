@@ -3,6 +3,7 @@ import { figureStatic, animateFigure } from './figure.js';
 import { db, save, uid, exportJSON, importJSON } from './store.js';
 import * as T from './timer.js';
 import * as PE from './planedit.js';
+import { PAUSE_LINES, DONE_TITLES, QUOTES, SAVE_TOASTS } from './texts.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -20,6 +21,7 @@ let catQuery = '';
 let metricSel = null;
 let exitSheet = false;
 let planOpen = null; // aufgeklappte Zeile im Plan-Editor
+let addSheet = false; // Auswahlfenster „Zu Plan hinzufügen“ auf der Übungsseite
 let wakeLock = null;
 
 T.setSound(db.sound);
@@ -150,13 +152,21 @@ const LEAF = `<span class="leaf" aria-hidden="true"><svg viewBox="0 0 64 64">
   <path d="M32 58C32 42 30 28 22 14"/><path d="M27 34c-8 1-14-3-16-10 7-1 13 2 16 10z"/><path d="M30 46c7-2 13 0 16 6-7 2-13 0-16-6z"/>
   <path d="M24 22c6-3 7-10 4-15-5 3-7 9-4 15z"/><path d="M31 32c6-4 13-3 17 2-6 4-13 3-17-2z"/></svg></span>`;
 
-const SIGNATURES = [
-  'Dein Zyklus. Deine Stärke.',
-  'Trainiere mit deinem Körper, nicht gegen ihn.',
-  'Anpassung – nicht Verzicht.',
-  'Kraft ist mehr als Optik.',
-  'Regeneration ist kein Trainingsausfall. Sie ist Teil des Trainings.',
-];
+// Motivationstexte: je Training in gemischter Reihenfolge, damit sich nichts wiederholt, bevor alle dran waren.
+// Gleicher Index -> gleicher Text, so bleibt der Text beim Neuzeichnen einer Seite stehen.
+const shuffleCache = new Map();
+function pickText(pool, salt, i = 0) {
+  const seed = ((db.active?.startedAt ?? 0) + salt * 7919) >>> 0;
+  const key = seed + ':' + pool.length;
+  if (!shuffleCache.has(key)) {
+    let a = seed || 1;
+    const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const order = pool.map((_, k) => k);
+    for (let k = order.length - 1; k > 0; k--) { const r = Math.floor(rnd() * (k + 1)); [order[k], order[r]] = [order[r], order[k]]; }
+    shuffleCache.set(key, order);
+  }
+  return pool[shuffleCache.get(key)[i % pool.length]];
+}
 
 // AppHeader: Titel links, Signet rechts, dünne Linie darunter
 const header = (title, back) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
@@ -171,6 +181,7 @@ const go = (h) => { location.hash = '#/' + h; };
 window.addEventListener('hashchange', render);
 
 function render() {
+  if (location.hash !== lastHash) addSheet = false; // Auswahlfenster nicht auf neue Seiten mitnehmen
   stops.forEach((f) => f()); stops = [];
   clearInterval(ticker); ticker = null;
   const [view, a, b] = route();
@@ -254,11 +265,17 @@ function viewExercise(id) {
     <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(lead)}</p></div></div>
     ${points.length ? pill('Worauf ich achte') + `<ul class="checklist">${points.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
     ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
-    ${pill('Zu Plan hinzufügen')}
-    <div class="stack">
-      ${db.plans.map((p) => `<button class="btn" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">${icon.plus}${esc(shownPlan(p.id).name)}</button>`).join('')}
+    <button class="btn primary big" data-act="add-sheet">${icon.plus}Zu Plan hinzufügen</button>
+    ${addSheet ? `<div class="sheet-bg" data-act="add-sheet-close"></div>
+    <div class="sheet add-sheet" role="dialog" aria-label="Zu Plan hinzufügen">
+      <p class="serif">${esc(ex.name)} hinzufügen zu …</p>
+      <div class="sheet-list">${db.plans.map((p) => {
+        const sp = shownPlan(p.id), n = planEstimate(sp).n;
+        return `<button class="sheet-row" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">
+          <span><b>${esc(sp.name)}</b><small>${n} Übung${n === 1 ? '' : 'en'}${draftOf(p.id) ? ' · nicht gespeichert' : ''}</small></span>${icon.plus}</button>`;
+      }).join('')}</div>
       <button class="btn ghost" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}Neuer Plan</button>
-    </div>`;
+      <button class="btn" data-act="add-sheet-close">Abbrechen</button></div>` : ''}`;
 }
 
 // ── Pläne ─────────────────────────────────────────────────
@@ -485,7 +502,7 @@ function viewTraining() {
     return trScreen({
       hero: `<div class="fig-tr rose timed"><div class="fig-icon">${icon.rest}</div>${figRing()}</div>`,
       title: 'Pause',
-      sub: 'Durchatmen. Regeneration gehört dazu.',
+      sub: pickText(PAUSE_LINES, 1, A.steps.slice(0, A.idx).filter((x) => x.k === 'rest').length),
       card1: restCard(),
       card2: nextWeightCard(),
       main: trMain('skip', 'Pause beenden', icon.chev, true),
@@ -642,11 +659,11 @@ function viewSummary() {
   const sets = done.flatMap(({ it }) => A.log[it.id].filter(Boolean));
   const vol = sets.reduce((a, x) => a + (x.reps || 0) * (x.weight || 0), 0);
   const secs = sets.reduce((a, x) => a + (x.dur || 0), 0);
-  const quote = SIGNATURES[Math.floor((A.startedAt / 1000) % SIGNATURES.length)];
+  const quote = pickText(QUOTES, 2);
   const stat = (label, val) => `<div class="stepper-wrap"><span>${label}</span><div class="stepper"><output class="t-val">${val}</output></div></div>`;
   return trScreen({
     hero: `<div class="fig-tr rose"><div class="fig-icon leaf-icon">${LEAF}</div></div>`,
-    title: 'Stark gemacht!',
+    title: pickText(DONE_TITLES, 3),
     sub: `${fmtDur((Date.now() - A.startedAt) / 1000)} · ${done.length} Übung${done.length === 1 ? '' : 'en'} · ${sets.length} Sätze`,
     card1: stat('Sätze', sets.length),
     card2: vol ? stat('Volumen (kg)', fmtNum(vol)) : stat('Zeit unter Spannung', T.fmt(secs)),
@@ -662,8 +679,9 @@ function finishTraining() {
   if (items.length) {
     const s = { id: uid(), date: A.startedAt, end: Date.now(), planId: A.planId, planName: A.planName, items };
     db.history.push(s);
+    const msg = pickText(SAVE_TOASTS, 4); // vor dem Schließen wählen – braucht die Startzeit des Trainings
     db.active = null; exitSheet = false; save();
-    toast('Stark gemacht! 💚 Training gespeichert');
+    toast(msg);
     go('verlauf/' + s.id);
   } else {
     db.active = null; exitSheet = false; save();
@@ -902,14 +920,18 @@ document.addEventListener('click', (ev) => {
       go('plan/' + p.id);
       break;
     }
+    case 'add-sheet': addSheet = true; render(); break;
+    case 'add-sheet-close': addSheet = false; render(); break;
     case 'add-to-plan': {
       // Liegt schon ein Entwurf vor, landet die Übung dort – sonst direkt im Plan
       const p = draftOf(btn.dataset.plan) || planById(btn.dataset.plan);
       p.items.push(newItem(btn.dataset.ex)); save();
       toast(draftOf(btn.dataset.plan) ? `Zu „${p.name}“ hinzugefügt (noch nicht gespeichert)` : `Zu „${p.name}“ hinzugefügt`);
+      addSheet = false; render();
       break;
     }
     case 'add-to-new': {
+      addSheet = false;
       const p = { id: uid(), name: 'Neuer Plan', items: [newItem(btn.dataset.ex)] };
       db.plans.push(p); save(); go('plan/' + p.id);
       break;
