@@ -1,4 +1,4 @@
-import { EXERCISES, EQUIPMENT, byId } from './exercises.js';
+import { EXERCISES, EQUIPMENT, byId, TEMPO } from './exercises.js';
 import { figureStatic, animateFigure } from './figure.js';
 import { db, save, uid, exportJSON, importJSON } from './store.js';
 import * as T from './timer.js';
@@ -79,9 +79,12 @@ function newItem(exId) {
   return item;
 }
 
-// Geschätzte Dauer: ca. 3 s pro Wiederholung + 10 s Rüstzeit pro Satz
+// Sekunden pro Wiederholung: eigene Einstellung > Schätzung im Katalog > 3 s
+const tempoOf = (exId) => db.tempo?.[exId] ?? TEMPO[exId] ?? 3;
+
+// Geschätzte Dauer: Tempo × Wiederholungen + 10 s Rüstzeit pro Satz
 function planEstimate(p) {
-  const work = (it) => (it.mode === 'time' ? it.dur : it.reps * 3 + 10);
+  const work = (it) => (it.mode === 'time' ? it.dur : it.reps * tempoOf(it.exId) + 10);
   let s = 0, n = 0, g = 0;
   for (const it of p.items) {
     if (it.type === 'rest') s += it.dur;
@@ -160,6 +163,7 @@ function render() {
   else if (view === 'verlauf' && a) html = viewSession(a);
   else if (view === 'verlauf') html = viewHistory();
   else if (view === 'fortschritt') html = viewProgress(a);
+  else if (view === 'einstellungen' && a === 'zeiten') html = viewTempo();
   else if (view === 'einstellungen') html = viewSettings();
   else { go('katalog'); return; }
   main.innerHTML = html;
@@ -361,7 +365,7 @@ function startTraining(planId) {
   const items = JSON.parse(JSON.stringify(p.items));
   db.active = { planId, planName: p.name, startedAt: Date.now(), items, steps: buildSteps(items), idx: 0, log: {}, timer: null, cur: null };
   T.unlockAudio();
-  enterStep(false);
+  enterStep(!!db.autopilot);
   go('training');
 }
 
@@ -369,7 +373,7 @@ function itemOf(step) { return PE.find(db.active.items, step.item)?.it; }
 const activeExercises = () => PE.flatten(db.active.items).filter(({ it }) => db.active.log[it.id]?.some(Boolean));
 
 function enterStep(autoStart) {
-  const A = db.active, step = A.steps[A.idx];
+  const A = db.active, step = A.steps[A.idx], before = A.steps[A.idx - 1];
   A.timer = null; A.cur = null;
   if (step) {
     if (step.k === 'rest') {
@@ -379,7 +383,19 @@ function enterStep(autoStart) {
       const it = itemOf(step);
       const prev = A.log[it.id]?.[step.set] || A.log[it.id]?.[step.set - 1];
       A.cur = { reps: prev?.reps ?? it.reps, weight: prev?.weight ?? it.weight, dur: it.dur };
-      if (it.mode === 'time') A.timer = T.makeTimer(it.dur);
+      const afterRest = before?.k === 'rest';
+      // Zeit-Übungen laufen nach einer Pause von selbst los, im Autopilot immer – auch Wiederholungen.
+      const auto = autoStart && (db.autopilot || (afterRest && it.mode === 'time'));
+      const counted = it.mode === 'time' || db.autopilot;
+      if (counted) {
+        // Vorlauf nur im Autopilot und nur, wenn keine Pause davor lag (die endet schon mit 3-2-1)
+        const setup = db.autopilot && auto && !afterRest ? (db.setup ?? 5) : 0;
+        const work = it.mode === 'time' ? it.dur : Math.max(1, A.cur.reps) * tempoOf(it.exId);
+        A.timer = T.makeTimer(setup + work);
+        A.timer.setup = setup;
+        if (it.mode !== 'time') { A.timer.reps = Math.max(1, A.cur.reps); A.timer.tempo = tempoOf(it.exId); }
+        if (auto) T.start(A.timer);
+      }
     }
   }
   save();
@@ -422,32 +438,44 @@ function viewTraining() {
       <button class="btn ghost" data-act="skip">Überspringen ›</button></div>`;
 
   if (step.k === 'rest') {
-    const nx = A.steps[A.idx + 1];
-    const nxText = nx ? (nx.k === 'rest' ? 'Pause' : nx.ss ? `${nx.ss} ${byId[itemOf(nx).exId].name} – Runde ${nx.set + 1}` : `${byId[itemOf(nx).exId].name} – Satz ${nx.set + 1}`) : 'Geschafft';
     return top + `<section class="tr-step">
       <div class="rest-head"><div class="ic-circle rose">${icon.rest}</div></div>
       <h2 class="tr-name">Pause</h2>
       <p class="tr-set">Durchatmen. Regeneration ist Teil des Trainings.</p>
       ${timerBlock(true)}
-      <p class="next">Als Nächstes: <b>${esc(nxText)}</b></p>
+      ${nextCard()}
       </section>` + nav + sheet;
   }
 
   const it = itemOf(step), ex = byId[it.exId];
   const target = it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`;
-  const nx = A.steps[A.idx + 1];
-  const ssNext = step.ss && nx?.k === 'work' && nx.ss && nx.set === step.set
-    ? `<p class="next">Danach direkt: <b>${nx.ss} ${esc(byId[itemOf(nx).exId].name)}</b></p>` : '';
+  const counted = !!A.timer;
   const setLine = step.ss ? `<span class="tag-l">${step.ss}</span> Superset · Runde ${step.set + 1} von ${step.of}` : `Satz ${step.set + 1} von ${it.sets}`;
   return top + `<section class="tr-step">
-    <div class="fig-tr ${it.mode === 'time' ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${it.mode === 'time' ? figRing() : ''}</div>
+    <div class="fig-tr ${counted ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${counted ? figRing() : ''}</div>
     <h2 class="tr-name">${esc(ex.name)}</h2>
     <p class="tr-set">${setLine} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}</p>
-    ${it.mode === 'time' ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1)}
+    ${counted ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1)}
     ${stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper')}
     <button class="btn primary big" data-act="done">${icon.check}Satz erledigt</button>
-    ${ssNext}
+    ${nextCard()}
     </section>` + nav + sheet;
+}
+
+// „Als Nächstes“: kleine Vorschau mit Piktogramm – auf Übungs- und Pausen-Screens gleich
+function nextCard() {
+  const A = db.active, cur = A.steps[A.idx], nx = A.steps[A.idx + 1];
+  let ic, title, sub, over = 'Als Nächstes';
+  if (!nx) { ic = `<div class="ic-circle sm">${icon.check}</div>`; title = 'Abschluss'; sub = 'Gleich geschafft'; }
+  else if (nx.k === 'rest') { ic = `<div class="ic-circle sm rose">${icon.rest}</div>`; title = 'Pause'; sub = `${nx.dur} s`; }
+  else {
+    const it = itemOf(nx), ex = byId[it.exId];
+    if (cur.k === 'work' && cur.ss && nx.ss && nx.set === cur.set) over = 'Danach direkt';
+    ic = circleFig(ex, 'sm');
+    title = `${nx.ss ? `<span class="tag-l">${nx.ss}</span> ` : ''}${esc(ex.name)}`;
+    sub = `${nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`} · ${it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`}${it.weight ? ` · ${fmtNum(it.weight)} kg` : ''}`;
+  }
+  return `<div class="next-card">${ic}<div class="next-txt"><small class="next-over">${over}</small><b>${title}</b><small>${sub}</small></div></div>`;
 }
 
 function stepper(key, label, val, step, ph = '') {
@@ -459,16 +487,28 @@ function stepper(key, label, val, step, ph = '') {
 
 // Zeit-Übung: Countdown-Ring liegt auf dem Figur-Kreis, die Bedienung sitzt im Regler-Platz
 // der Wiederholungs-Übungen – so bleibt der Bildaufbau bei beiden Übungsarten identisch.
+// Timer-Zustand mit Vorlauf: total = setup + work. Im Vorlauf steht der Ring voll.
+function timerState(t) {
+  const r = T.remaining(t), work = t.total - (t.setup || 0);
+  const wr = Math.min(r, work);
+  return {
+    r, work, wr,
+    setupLeft: Math.max(0, r - work),
+    frac: work > 0 ? wr / work : 0,
+    value: t.reps ? String(Math.min(t.reps, Math.ceil(wr / t.tempo))) : T.fmt(wr),
+    label: r - work > 0.05 ? `Los in ${Math.ceil(r - work)} s` : t.reps ? 'Wiederholungen' : 'Zeit',
+  };
+}
 function figRing() {
-  const t = db.active.timer;
+  const z = timerState(db.active.timer);
   return `<svg class="fig-ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="57.5"/>
-    <circle class="ring" cx="60" cy="60" r="57.5" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - (T.remaining(t) / t.total) * 100}"/></svg>`;
+    <circle class="ring" cx="60" cy="60" r="57.5" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - z.frac * 100}"/></svg>`;
 }
 function timerCard() {
-  const t = db.active.timer;
-  return `<div class="stepper-wrap timer-card"><span>Zeit</span><div class="stepper">
-    <button data-act="t-stop" aria-label="Stop – Zeit zurücksetzen">${icon.stop}</button>
-    <output class="t-val" id="tdisp" aria-live="off">${T.fmt(T.remaining(t))}</output>
+  const t = db.active.timer, z = timerState(t);
+  return `<div class="stepper-wrap timer-card"><span id="tlabel">${z.label}</span><div class="stepper">
+    <button data-act="t-stop" aria-label="Stop – zurücksetzen">${icon.stop}</button>
+    <output class="t-val" id="tdisp" aria-live="off">${z.value}</output>
     <button class="t-go" data-act="t-toggle" id="t-toggle" aria-label="${t.running ? 'Pause' : 'Start'}">${t.running ? icon.pause : icon.play}</button></div></div>`;
 }
 
@@ -496,10 +536,11 @@ function startTicker() {
   const tick = () => {
     const t = A.timer;
     if (!t || db.active !== A) return;
-    const r = T.remaining(t);
-    const d = $('#tdisp'), ring = $('.timer .ring, .fig-ring .ring');
-    if (d) d.textContent = T.fmt(r);
-    if (ring) ring.setAttribute('stroke-dashoffset', 100 - (r / t.total) * 100);
+    const z = timerState(t), r = z.r;
+    const d = $('#tdisp'), ring = $('.timer .ring, .fig-ring .ring'), lb = $('#tlabel');
+    if (d) d.textContent = $('.timer .time') ? T.fmt(r) : z.value;
+    if (ring) ring.setAttribute('stroke-dashoffset', 100 - z.frac * 100);
+    if (lb && lb.textContent !== z.label) lb.textContent = z.label;
     $('#t-start')?.toggleAttribute('disabled', t.running);
     $('#t-pause')?.toggleAttribute('disabled', !t.running);
     const tg = $('#t-toggle');
@@ -508,12 +549,16 @@ function startTicker() {
       tg.setAttribute('aria-label', t.running ? 'Pause' : 'Start');
     }
     if (!t.running) return;
-    const sec = Math.ceil(r);
-    if (sec <= 3 && sec > 0 && sec !== lastBeep) { lastBeep = sec; T.beep('tick'); }
+    // Töne: 3-2-1 am Ende von Vorlauf und Satz/Pause, Startton nach dem Vorlauf
+    const phase = z.setupLeft > 0 ? 's' : 'w';
+    const sec = Math.ceil(phase === 's' ? z.setupLeft : r);
+    const key = phase + sec;
+    if (phase === 'w' && lastBeep?.[0] === 's') { lastBeep = 'w-go'; T.beep('start'); }
+    else if (sec <= 3 && sec > 0 && key !== lastBeep) { lastBeep = key; T.beep('tick'); }
     if (r <= 0) {
       T.pause(t); T.beep('end');
       const step = A.steps[A.idx];
-      if (step.k === 'work') logSet(t.total);
+      if (step.k === 'work') t.reps ? logSet() : logSet(z.work);
       nextStep();
     }
   };
@@ -589,6 +634,28 @@ function viewHistory() {
 }
 
 // ── Einstellungen ─────────────────────────────────────────
+function viewTempo() {
+  const custom = Object.keys(db.tempo || {}).length;
+  const row = (ex) => {
+    const v = tempoOf(ex.id), own = db.tempo?.[ex.id] != null;
+    return `<div class="tempo-row" data-ex="${ex.id}">${circleFig(ex, 'sm')}
+      <div class="prow-txt"><b><span>${esc(ex.name)}</span></b><small>${own ? `geändert · Schätzung ${fmtNum(TEMPO[ex.id] ?? 3)} s` : 'Schätzung'}</small></div>
+      <div class="stepper"><button data-act="tempo" data-d="-0.5" aria-label="${esc(ex.name)} schneller">−</button>
+      <output class="t-val">${fmtNum(v)}<i> s</i></output>
+      <button data-act="tempo" data-d="0.5" aria-label="${esc(ex.name)} langsamer">+</button></div></div>`;
+  };
+  return header('Zeiten', ['#/einstellungen', 'Einstellungen']) + `
+    <p class="sub">Im Autopilot zählt flow.training die Wiederholungen in diesem Tempo herunter. Die Werte sind Schätzungen für eine ruhige, kontrollierte Ausführung – pass sie an dein Tempo an.</p>
+    ${pill('Vorlauf')}
+    <div class="stepper-wrap" data-pfield="setup"><span>Vor einem Satz ohne Pause davor</span><div class="stepper">
+      <button data-act="setup" data-d="-1" aria-label="Vorlauf kürzer">−</button><output class="t-val">${fmtNum(db.setup ?? 5)}<i> s</i></output>
+      <button data-act="setup" data-d="1" aria-label="Vorlauf länger">+</button></div></div>
+    <p class="hint">Gilt z. B. beim Wechsel im Superset oder am Trainingsbeginn. Nach einer Pause geht es direkt los – die endet schon mit 3-2-1.</p>
+    ${pill('Sekunden pro Wiederholung')}
+    <div class="plist">${EXERCISES.map(row).join('')}</div>
+    ${custom ? `<button class="btn ghost big" data-act="tempo-reset">Alle auf Schätzung zurücksetzen</button>` : ''}`;
+}
+
 const DESIGNS = [
   { id: 'flow', name: 'flow.training', note: 'Creme, Salbei & Rosé', sw: ['#F3F0EB', '#9DAA96', '#D4A19C', '#3F6B5C'] },
   { id: 'classic', name: 'Klassisch', note: 'Das ursprüngliche Design', sw: ['#F4F2EE', '#EBE8E2', '#1C7C74', '#E8590C'] },
@@ -606,7 +673,12 @@ function viewSettings() {
     <div class="setting"><div class="seg" role="radiogroup" aria-label="Erscheinungsbild">${[['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) =>
       `<button class="${theme === k ? 'on' : ''}" data-act="theme" data-theme="${k}" role="radio" aria-checked="${theme === k}">${l}</button>`).join('')}</div></div>
     ${pill('Training')}
-    <label class="setting toggle"><span>Ton beim Timer</span><input type="checkbox" data-act="sound-cb" ${db.sound ? 'checked' : ''}></label>
+    <div class="stack">
+      <label class="setting toggle"><span>Ton beim Timer</span><input type="checkbox" data-act="sound-cb" ${db.sound ? 'checked' : ''}></label>
+      <label class="setting toggle"><span>Autopilot<small>Auch Wiederholungen zählen herunter und es geht automatisch weiter.</small></span>
+        <input type="checkbox" data-act="autopilot-cb" ${db.autopilot ? 'checked' : ''}></label>
+      <a class="row-link" href="#/einstellungen/zeiten"><span>Zeiten für den Autopilot</span><span class="more">${fmtNum(db.setup ?? 5)} s Vorlauf</span></a>
+    </div>
     ${pill('Daten')}
     <div class="stack">
       <button class="btn" data-act="export">Daten exportieren (JSON)</button>
@@ -827,9 +899,9 @@ document.addEventListener('click', (ev) => {
       const step = A.steps[A.idx];
       if (itemOf(step).mode === 'time') {
         const t = A.timer; T.pause(t);
-        const el = t.total - T.remaining(t);
-        logSet(el >= 1 ? el : t.total);
-      } else logSet();
+        const z = timerState(t), el = z.work - z.wr;
+        logSet(el >= 1 ? el : z.work);
+      } else { if (A.timer) T.pause(A.timer); logSet(); }
       T.unlockAudio();
       nextStep();
       break;
@@ -856,6 +928,17 @@ document.addEventListener('click', (ev) => {
     case 'metric': metricSel = btn.dataset.k; render(); break;
     case 'theme': db.theme = btn.dataset.theme; save(); applyTheme(); render(); break;
     case 'design': db.design = btn.dataset.design; save(); applyTheme(); render(); break;
+    case 'tempo': {
+      const id = btn.closest('[data-ex]').dataset.ex;
+      const v = Math.min(10, Math.max(0.5, tempoOf(id) + +btn.dataset.d));
+      db.tempo = { ...(db.tempo || {}) };
+      if (v === (TEMPO[id] ?? 3)) delete db.tempo[id]; else db.tempo[id] = v;
+      save(); render(); break;
+    }
+    case 'tempo-reset':
+      if (confirm('Alle Tempi auf die Schätzung zurücksetzen?')) { db.tempo = {}; save(); render(); }
+      break;
+    case 'setup': db.setup = Math.min(20, Math.max(0, (db.setup ?? 5) + +btn.dataset.d)); save(); render(); break;
     case 'del-session':
       if (confirm('Dieses Training aus dem Verlauf löschen?')) { db.history = db.history.filter((s) => s.id !== btn.dataset.id); save(); go('verlauf'); }
       break;
@@ -892,6 +975,9 @@ document.addEventListener('change', (ev) => {
     save();
   } else if (t.dataset.act === 'sound-cb') {
     db.sound = t.checked; T.setSound(db.sound); save();
+  } else if (t.dataset.act === 'autopilot-cb') {
+    db.autopilot = t.checked; save();
+    toast(db.autopilot ? 'Autopilot an – gilt ab dem nächsten Satz' : 'Autopilot aus');
   } else if (t.id === 'import' && t.files[0]) {
     t.files[0].text().then((txt) => {
       if (!confirm('Pläne und Verlauf durch den Inhalt der Datei ersetzen?')) return;

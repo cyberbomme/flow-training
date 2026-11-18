@@ -12,6 +12,9 @@ function defaults() {
     sound: true,
     theme: 'system',
     design: 'flow',
+    autopilot: false,
+    setup: 5,        // Vorlauf in s vor automatisch gestarteten Sätzen ohne Pause davor
+    tempo: {},       // eigene Tempi je Übung (s pro Wiederholung), überschreibt TEMPO
     plans: [samplePlan()],
     history: [],
     active: null,

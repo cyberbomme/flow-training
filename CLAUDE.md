@@ -25,3 +25,9 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Superset-Regeln (vom Besitzer festgelegt): keine Pause zwischen den Übungen, beliebig viele Übungen, eine Rundenzahl für alle.
 - Plan-Editor: Optik „Zeilen“ (Konzept A), Aufbau „Aufklappen“ (Konzept C). Griff ziehen = sortieren,
   auf Übung ziehen + 450 ms halten = Superset. Alle Zeilen gleich aufgebaut, Regler = Stepper aus dem Training.
+
+## Training-Ablauf
+- Zeit-Übungen starten nach einer Pause automatisch. Bildaufbau Wiederholung/Zeit identisch (Ring im Figur-Kreis, Regler-Karte).
+- Autopilot (Einstellung): auch Wiederholungen zählen herunter (Tempo × Wdh.) und schalten automatisch weiter.
+  Tempo-Schätzungen in `TEMPO` (`js/exercises.js`), eigene Werte in `db.tempo`; Vorlauf `db.setup` nur vor Sätzen ohne Pause davor.
+- „Als Nächstes“-Karte mit Piktogramm auf Übungs- und Pausen-Screens.

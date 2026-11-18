@@ -228,7 +228,7 @@ svg .fill { fill: currentColor; stroke: none; }
 .plan-actions .btn.primary { flex: 1; }
 
 /* ── Plan-Editor: eine Zeile für Übung, Pause, Superset-Mitglied ── */
-.plist { display: grid; gap: 8px; margin-top: 8px; }
+.plist { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
 .prow { background: var(--color-surface); border-radius: var(--r-card); position: relative; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: box-shadow .15s, transform .15s; }
 .prow-main { display: flex; align-items: center; gap: 14px; padding: 8px 4px 8px 10px; min-height: 68px; cursor: pointer; }
 .prow-txt { flex: 1; min-width: 0; }
@@ -350,7 +350,7 @@ body[data-view="training"] { padding-bottom: calc(env(safe-area-inset-bottom) + 
 .setting > span { font-weight: 500; }
 .setting .seg { margin: 10px 0 0; --n: 3; }
 .toggle { display: flex; justify-content: space-between; align-items: center; }
-.toggle input { width: 22px; height: 22px; accent-color: var(--color-forest); }
+.toggle input { flex: none; width: 22px; height: 22px; accent-color: var(--color-forest); }
 label.btn { cursor: pointer; }
 
 .chart { position: relative; background: var(--color-surface); border-radius: var(--r-card); margin-bottom: 16px; touch-action: pan-y; padding-top: 4px; }
@@ -414,3 +414,22 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 .design-opt .sample-classic { font-family: -apple-system, system-ui, sans-serif; font-weight: 700; letter-spacing: -.02em; }
 .about { text-align: center; color: var(--color-text-muted); font-size: 14px; margin-top: 32px; }
 .about .ver { font: 600 20px/1.2 var(--font-display); color: var(--color-text); letter-spacing: var(--display-track); }
+
+/* ── Als Nächstes ────────────────────────────── */
+.next-card { display: flex; align-items: center; gap: 14px; text-align: left; background: var(--color-surface); border-radius: var(--r-card); padding: 10px 16px 10px 10px; margin-top: 16px; }
+.next-card .ic-circle.sm { width: 48px; height: 48px; }
+.next-txt { flex: 1; min-width: 0; }
+.next-txt b { display: block; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.next-txt small { font-size: 13px; }
+.next-txt .next-over { font: 600 11px/1.3 var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--color-forest); }
+
+/* ── Zeiten (Autopilot) ──────────────────────── */
+.setting.toggle > span small { display: block; font-size: 13px; font-weight: 400; margin-top: 2px; }
+.setting.toggle { gap: 12px; }
+.tempo-row { display: flex; align-items: center; gap: 12px; background: var(--color-surface); border-radius: var(--r-card); padding: 8px 8px 8px 10px; }
+.tempo-row .stepper { flex: none; gap: 2px; }
+.tempo-row .stepper button { width: 38px; height: 38px; }
+.tempo-row .prow-txt b span { overflow: hidden; text-overflow: ellipsis; }
+.t-val i { font: 500 12px var(--font-body); font-style: normal; color: var(--color-text-muted); }
+.tempo-row .t-val { width: 50px; text-align: center; font: 600 22px/1 var(--font-display); }
+[data-pfield="setup"] .t-val { width: 64px; text-align: center; font: 600 28px/1 var(--font-display); }

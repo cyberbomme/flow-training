@@ -235,3 +235,15 @@ export const EXERCISES = [
 ];
 
 export const byId = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
+
+// Geschätztes Tempo in Sekunden pro Wiederholung (eine kontrollierte Ab- und Aufwärtsbewegung).
+// Grundlage für Autopilot und Zeitschätzung; in den Einstellungen pro Übung anpassbar.
+export const TEMPO = {
+  liegestuetz: 2.5, kniebeuge: 3, ausfallschritt: 3.5, hueftheben: 2.5, superman: 3, crunch: 2.5,
+  'bank-dips': 2.5, klimmzug: 3.5, 'beinheben-haengend': 3, bergsteiger: 1, seitstuetz: 3, unterarmstuetz: 3,
+  wandsitzen: 3, 'hollow-hold': 3,
+  bizepscurl: 3, 'schulterdruecken-kh': 3, 'rudern-kh': 3, 'goblet-squat': 3.5, 'rumaenisches-kreuzheben': 4,
+  'bankdruecken-kh': 3, frontheben: 3,
+  'kniebeuge-lh': 4, kreuzheben: 4.5, 'bankdruecken-lh': 3.5, 'rudern-lh': 3,
+  'kb-swing': 2, 'band-rudern': 2.5, 'band-brustpresse': 2.5,
+};
