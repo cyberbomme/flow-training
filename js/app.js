@@ -23,6 +23,7 @@ let catQuery = '';
 let metricSel = null;
 let exitSheet = false;
 let planOpen = null; // aufgeklappte Zeile im Plan-Editor
+let equipSheet = false; // Sheet „Meine Ausrüstung“ im Katalog
 let addSheet = false; // Auswahlfenster „Zu Plan hinzufügen“ auf der Übungsseite
 let showTpl = null;    // Vorlagen aufgeklappt? null = automatisch (offen, solange es keine Pläne gibt)
 let wakeLock = null;
@@ -146,6 +147,7 @@ const icon = {
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg>',
+  dumbbell: '<svg viewBox="0 0 24 24"><path d="M3.5 9.5v5M6.5 7.5v9M17.5 7.5v9M20.5 9.5v5M6.5 12h11"/></svg>',
   bellOff: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></svg>',
 };
 
@@ -186,7 +188,7 @@ const circleFig = (ex, cls = "") => `<div class="ic-circle ${cls}">${figureStati
 // ── Router ────────────────────────────────────────────────
 const route = () => (location.hash.slice(2) || 'katalog').split('/').map(decodeURIComponent);
 const go = (h) => { location.hash = '#/' + h; };
-window.addEventListener('hashchange', render);
+window.addEventListener('hashchange', () => { equipSheet = false; render(); });
 
 function render() {
   if (location.hash !== lastHash) addSheet = false; // Auswahlfenster nicht auf neue Seiten mitnehmen
@@ -235,14 +237,20 @@ function viewCatalog(pickFor) {
   const head = plan ? header('Übung hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
   return `${head}
     <input class="search" type="search" id="q" placeholder="Übung suchen" value="${esc(catQuery)}" autocomplete="off">
-    <div class="filter-label"><p class="overline">Meine Ausrüstung</p><button class="link" data-act="equip-all">${db.equip.length ? 'keine' : 'alle'}</button></div>
-    <div class="chips">${EQUIPMENT.map((e) => `<button class="chip ${db.equip.includes(e.id) ? 'on' : ''}" data-act="equip" data-id="${e.id}" aria-pressed="${db.equip.includes(e.id)}">${e.name}</button>`).join('')}</div>
-    <div class="filter-label"><p class="overline">Muskelgruppe</p></div>
-    <div class="chips" role="radiogroup" aria-label="Muskelgruppe">${[{ id: '', name: 'Alle' }, ...MUSCLE_GROUPS].map((g) => {
+    <div class="chips scroll" role="radiogroup" aria-label="Muskelgruppe">
+      <button class="chip filter" data-act="equip-sheet" aria-haspopup="dialog">${icon.dumbbell}Ausrüstung${db.equip.length ? ` <span class="cnt">${db.equip.length}</span>` : ''}</button>
+      ${[{ id: '', name: 'Alle' }, ...MUSCLE_GROUPS].map((g) => {
       const on = (db.muscle || '') === g.id;
       return `<button class="chip ${on ? 'on' : ''}" data-act="muscle" data-id="${g.id}" role="radio" aria-checked="${on}">${g.name}</button>`;
     }).join('')}</div>
-    <div id="list" class="ilist"></div>`;
+    <div id="list" class="ilist"></div>
+    ${equipSheet ? `<div class="sheet-bg" data-act="equip-sheet-close"></div>
+    <div class="sheet equip-sheet" role="dialog" aria-label="Meine Ausrüstung">
+      <div class="sheet-head"><p class="serif">Meine Ausrüstung</p><button class="link" data-act="equip-all">${db.equip.length === EQUIPMENT.length ? 'Alle abwählen' : 'Alle wählen'}</button></div>
+      <p class="sheet-hint">Du siehst nur Übungen, für die du alles Nötige hast.</p>
+      <div class="chips">${EQUIPMENT.map((e) => { const on = db.equip.includes(e.id);
+        return `<button class="chip ${on ? 'on' : ''}" data-act="equip" data-id="${e.id}" aria-pressed="${on}">${on ? icon.check : ''}${e.name}</button>`; }).join('')}</div>
+      <button class="btn primary big" data-act="equip-sheet-close">Fertig</button></div>` : ''}`;
 }
 
 function renderCatalogList(pickFor) {
@@ -255,8 +263,7 @@ function renderCatalogList(pickFor) {
   el.innerHTML = list.map((ex) => `
     <a class="ilist-item" href="${pickFor ? '#' : '#/uebung/' + ex.id}" ${pickFor ? `data-act="pick" data-plan="${pickFor}" data-ex="${ex.id}"` : ''}>
       ${circleFig(ex)}
-      <div class="ilist-text"><b>${esc(ex.name)}</b><small>${esc(ex.muscles)}</small>
-      <span class="badge">${equipNames(ex)}${ex.mode === 'time' ? ' · Zeit' : ''}</span></div>
+      <div class="ilist-text"><b>${esc(ex.name)}${ex.mode === 'time' ? `<span class="t-ic" aria-label="auf Zeit">${icon.rest}</span>` : ''}</b><small>${esc(ex.muscles)}</small></div>
       <span class="chev">${pickFor ? icon.plus : icon.chev}</span>
     </a>`).join('');
 }
@@ -942,18 +949,18 @@ document.addEventListener('click', (ev) => {
     case 'equip': {
       const id = btn.dataset.id;
       db.equip = db.equip.includes(id) ? db.equip.filter((x) => x !== id) : [...db.equip, id];
-      save(); btn.classList.toggle('on');
-      $('[data-act="equip-all"]').textContent = db.equip.length ? 'keine' : 'alle';
-      renderCatalogList(route()[2] === 'add' ? route()[1] : null);
+      save(); render();
       break;
     }
+    case 'equip-sheet': equipSheet = true; render(); break;
+    case 'equip-sheet-close': equipSheet = false; render(); break;
     case 'muscle':
       db.muscle = btn.dataset.id; save();
       btn.parentElement.querySelectorAll('[data-act=muscle]').forEach((c) => { const on = c === btn; c.classList.toggle('on', on); c.setAttribute('aria-checked', on); });
       renderCatalogList(route()[2] === 'add' ? route()[1] : null);
       break;
     case 'equip-all':
-      db.equip = db.equip.length ? [] : EQUIPMENT.map((e) => e.id); save(); render(); break;
+      db.equip = db.equip.length === EQUIPMENT.length ? [] : EQUIPMENT.map((e) => e.id); save(); render(); break;
     case 'pick': {
       ev.preventDefault();
       const p = editPlan(btn.dataset.plan);
