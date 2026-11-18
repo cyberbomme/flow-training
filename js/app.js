@@ -2,6 +2,7 @@ import { EXERCISES, EQUIPMENT, byId } from './exercises.js';
 import { figureStatic, animateFigure } from './figure.js';
 import { db, save, uid, exportJSON, importJSON } from './store.js';
 import * as T from './timer.js';
+import * as PE from './planedit.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -18,6 +19,7 @@ let lastHash = null;
 let catQuery = '';
 let metricSel = null;
 let exitSheet = false;
+let planOpen = null; // aufgeklappte Zeile im Plan-Editor
 let wakeLock = null;
 
 T.setSound(db.sound);
@@ -77,15 +79,20 @@ function newItem(exId) {
   return item;
 }
 
+// Geschätzte Dauer: ca. 3 s pro Wiederholung + 10 s Rüstzeit pro Satz
 function planEstimate(p) {
-  let s = 0, n = 0;
+  const work = (it) => (it.mode === 'time' ? it.dur : it.reps * 3 + 10);
+  let s = 0, n = 0, g = 0;
   for (const it of p.items) {
-    if (it.type === 'rest') { s += it.dur; continue; }
-    n++;
-    s += it.sets * (it.mode === 'time' ? it.dur : it.reps * 3 + 10) + Math.max(0, it.sets - 1) * it.rest;
+    if (it.type === 'rest') s += it.dur;
+    else if (it.type === 'group') {
+      g++; n += it.items.length;
+      s += it.rounds * it.items.reduce((a, m) => a + work(m), 0) + Math.max(0, it.rounds - 1) * it.rest;
+    } else { n++; s += it.sets * work(it) + Math.max(0, it.sets - 1) * it.rest; }
   }
-  return { n, s };
+  return { n, s, g };
 }
+const planMeta = ({ n, s, g }) => `${n} Übung${n === 1 ? '' : 'en'}${g ? ` · ${g} Superset${g === 1 ? '' : 's'}` : ''} · ca. ${fmtDur(s)}`;
 
 const icon = {
   katalog: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.5v6M7 10.5h10M12 13.5l-3.5 6M12 13.5l3.5 6"/></svg>',
@@ -99,6 +106,7 @@ const icon = {
   pause: '<svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>',
   stop: '<svg viewBox="0 0 24 24"><rect class="fill" x="7" y="7" width="10" height="10" rx="1.5"/></svg>',
   rest: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 2M10 3.5h4"/></svg>',
+  grip: '<svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -232,9 +240,9 @@ function viewPlans() {
   return header('Pläne') + `
     <div class="stack">
     ${db.plans.map((p) => {
-      const { n, s } = planEstimate(p);
+      const est = planEstimate(p), n = est.n;
       return `<div class="plan">
-        <a class="plan-main" href="#/plan/${p.id}"><b>${esc(p.name)}</b><small>${n} Übung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)}</small></a>
+        <a class="plan-main" href="#/plan/${p.id}"><b>${esc(p.name)}</b><small>${planMeta(est)}</small></a>
         <div class="plan-actions">
           <button class="btn primary" data-act="start" data-plan="${p.id}" ${n ? '' : 'disabled'}>${icon.play}Start</button>
           <button class="btn" data-act="dup-plan" data-plan="${p.id}">Kopieren</button>
@@ -248,47 +256,97 @@ function viewPlans() {
 function viewPlanEditor(id) {
   const p = planById(id);
   if (!p) return header('Plan', ['#/plaene', 'Pläne']) + empty('Diesen Plan gibt es nicht (mehr).');
-  const items = p.items.map((it, i) => {
-    const tools = `<div class="tools">
-      <button class="icon-btn" data-act="mv" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="nach oben">${icon.up}</button>
-      <button class="icon-btn" data-act="mv" data-dir="1" ${i === p.items.length - 1 ? 'disabled' : ''} aria-label="nach unten">${icon.down}</button>
-      <button class="icon-btn" data-act="rm" aria-label="entfernen">${icon.del}</button></div>`;
-    if (it.type === 'rest') {
-      return `<li class="item rest" data-item="${it.id}"><div class="item-head"><div class="ic-circle sm rose">${icon.rest}</div><div class="item-name"><b>Pause</b></div>${tools}</div>
-        <div class="fields"><label>Dauer (s)<input type="number" inputmode="numeric" data-f="dur" value="${it.dur}"></label></div></li>`;
-    }
-    const ex = byId[it.exId];
-    const last = lastFor(it.exId);
-    return `<li class="item" data-item="${it.id}">
-      <div class="item-head">${circleFig(ex, 'sm')}
-        <div class="item-name"><b>${esc(ex.name)}</b>${last ? `<small>Zuletzt: ${setsText(last.sets, last.mode)}</small>` : ''}</div>${tools}</div>
-      <div class="seg"><button class="${it.mode === 'reps' ? 'on' : ''}" data-act="mode" data-mode="reps">Wiederholungen</button><button class="${it.mode === 'time' ? 'on' : ''}" data-act="mode" data-mode="time">Dauer</button></div>
-      <div class="fields">
-        <label>Sätze<input type="number" inputmode="numeric" data-f="sets" value="${it.sets}" min="1"></label>
-        ${it.mode === 'time'
-          ? `<label>Dauer (s)<input type="number" inputmode="numeric" data-f="dur" value="${it.dur}"></label>`
-          : `<label>Wdh.<input type="number" inputmode="numeric" data-f="reps" value="${it.reps}"></label>`}
-        <label>Gewicht (kg)<input type="text" inputmode="decimal" data-f="weight" value="${fmtNum(it.weight)}" placeholder="Körper"></label>
-        <label>Satzpause (s)<input type="number" inputmode="numeric" data-f="rest" value="${it.rest}"></label>
-      </div></li>`;
-  }).join('');
-  const { n, s } = planEstimate(p);
+  const est = planEstimate(p);
+  const list = p.items.map((it) => it.type === 'group' ? groupBlock(p, it) : it.type === 'rest' ? restRow(it) : exRow(p, it, null)).join('');
   return `<header class="app-head"><a class="back" href="#/plaene">${icon.back}Pläne</a>
       <div class="head-row"><input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans">${LOGO}</div></header>
-    <p class="sub">${n} Übung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)} · wird automatisch gespeichert</p>
-    <ol class="items" data-plan="${p.id}">${items || '<p class="hint">Noch leer. Füg Übungen und Pausen hinzu.</p>'}</ol>
+    <p class="sub" id="plan-meta">${planMeta(est)}</p>
+    ${p.items.length ? `<p class="hint">Am Griff ziehen zum Sortieren. Auf eine Übung ziehen und kurz halten bildet ein Superset.</p>` : ''}
+    <div class="plist" id="plan-list" data-plan="${p.id}">${list || '<p class="hint">Noch leer. Füg Übungen und Pausen hinzu.</p>'}</div>
     <div class="row">
       <a class="btn" href="#/plan/${p.id}/add">${icon.plus}Übung</a>
       <button class="btn peach" data-act="add-rest" data-plan="${p.id}">${icon.plus}Pause</button>
     </div>
-    <button class="btn primary big" data-act="start" data-plan="${p.id}" ${n ? '' : 'disabled'}>${icon.play}Training starten</button>`;
+    <button class="btn primary big" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'}>${icon.play}Training starten</button>`;
+}
+
+// Einheitliche Zeile: Kreis · Name + Werte · Griff. Antippen klappt die Regler auf.
+const grip = `<button class="handle" data-handle aria-label="Ziehen zum Verschieben">${icon.grip}</button>`;
+const exSummary = (it, inGroup) => {
+  const v = it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`;
+  const w = it.weight ? ` · ${fmtNum(it.weight)} kg` : '';
+  return inGroup ? v + w : `${it.sets} × ${v}${w} · Pause ${it.rest} s`;
+};
+
+function exRow(p, it, group, idx) {
+  const ex = byId[it.exId];
+  const label = group ? `<span class="tag-l">${PE.letterOf(p.items, group.id)}${idx + 1}</span>` : '';
+  const open = planOpen === it.id;
+  return `<div class="prow ${open ? 'open' : ''}" data-id="${it.id}" data-kind="${group ? 'member' : 'ex'}">
+    <div class="prow-main" data-act="ptoggle" role="button" aria-expanded="${open}">${circleFig(ex, 'sm')}
+      <div class="prow-txt"><b>${label}<span>${esc(ex.name)}</span></b><small>${exSummary(it, !!group)}</small></div>${grip}</div>
+    ${open ? planFields(it, group ? 'member' : 'ex') : ''}</div>`;
+}
+
+function restRow(it) {
+  const open = planOpen === it.id;
+  return `<div class="prow rest-row ${open ? 'open' : ''}" data-id="${it.id}" data-kind="rest">
+    <div class="prow-main" data-act="ptoggle" role="button" aria-expanded="${open}"><div class="ic-circle sm rose">${icon.rest}</div>
+      <div class="prow-txt"><b><span>Pause</span></b><small>${it.dur} s</small></div>${grip}</div>
+    ${open ? planFields(it, 'rest') : ''}</div>`;
+}
+
+function groupBlock(p, g) {
+  const open = planOpen === g.id;
+  return `<div class="pgroup ${open ? 'open' : ''}" data-id="${g.id}" data-kind="group">
+    <div class="g-head" data-act="ptoggle" role="button" aria-expanded="${open}">
+      <div class="g-txt"><span class="g-label">Superset ${PE.letterOf(p.items, g.id)}</span>
+      <small>${g.rounds} Runde${g.rounds === 1 ? '' : 'n'} · Pause ${g.rest} s nach jeder Runde</small></div>${grip}</div>
+    ${open ? planFields(g, 'group') : ''}
+    <div class="g-members">${g.items.map((m, i) => exRow(p, m, g, i)).join('')}</div></div>`;
+}
+
+function pStepper(field, label, val, step, unit, ph) {
+  return `<div class="stepper-wrap" data-pfield="${field}" data-step="${step}"><span>${label}</span><div class="stepper">
+    <button data-act="pstep" data-d="-1" aria-label="${label} weniger">−</button>
+    <input type="text" inputmode="decimal" value="${fmtNum(val)}" placeholder="${ph || ''}" data-pf="${field}" aria-label="${label}${unit ? ` in ${unit}` : ''}">
+    <button data-act="pstep" data-d="1" aria-label="${label} mehr">+</button></div></div>`;
+}
+
+function planFields(it, kind) {
+  let h = '';
+  if (kind === 'rest') h = pStepper('dur', 'Dauer (s)', it.dur, 15, 's');
+  else if (kind === 'group') h = pStepper('rounds', 'Runden', it.rounds, 1) + pStepper('rest', 'Pause nach Runde (s)', it.rest, 15, 's');
+  else {
+    h = `<div class="seg"><button class="${it.mode === 'reps' ? 'on' : ''}" data-act="pmode" data-mode="reps">Wiederholungen</button><button class="${it.mode === 'time' ? 'on' : ''}" data-act="pmode" data-mode="time">Dauer</button></div>`;
+    if (kind === 'ex') h += pStepper('sets', 'Sätze', it.sets, 1);
+    h += it.mode === 'reps' ? pStepper('reps', 'Wiederholungen', it.reps, 1) : pStepper('dur', 'Dauer (s)', it.dur, 5, 's');
+    h += pStepper('weight', 'Gewicht (kg)', it.weight, 1, 'kg', 'Körper');
+    if (kind === 'ex') h += pStepper('rest', 'Satzpause (s)', it.rest, 15, 's');
+    else h += `<p class="hint">Runden und Pause gelten für das ganze Superset. Zwischen den Übungen gibt es keine Pause.</p>`;
+    const last = lastFor(it.exId);
+    if (last) h += `<p class="hint">Zuletzt (${fmtDate(last.date)}): ${setsText(last.sets, last.mode)}</p>`;
+  }
+  const extra = kind === 'member' ? `<button class="btn ghost small" data-act="punlink">Aus Superset lösen</button>`
+    : kind === 'group' ? `<button class="btn ghost small" data-act="psplit">Superset auflösen</button>` : '';
+  return `<div class="pfields" data-for="${it.id}">${h}<div class="f-actions">${extra}<button class="btn danger-text small" data-act="premove">Entfernen</button></div></div>`;
 }
 
 // ── Training ──────────────────────────────────────────────
+// Superset: Runde für Runde alle Übungen nacheinander, Pause erst nach der Runde.
 function buildSteps(items) {
   const steps = [];
+  let letter = 0;
   for (const it of items) {
     if (it.type === 'rest') { if (it.dur > 0) steps.push({ k: 'rest', dur: it.dur }); continue; }
+    if (it.type === 'group') {
+      const L = 'ABCDEFGHIJ'[letter++];
+      for (let r = 0; r < it.rounds; r++) {
+        it.items.forEach((m, i) => steps.push({ k: 'work', item: m.id, set: r, of: it.rounds, ss: `${L}${i + 1}` }));
+        if (r < it.rounds - 1 && it.rest > 0) steps.push({ k: 'rest', dur: it.rest });
+      }
+      continue;
+    }
     for (let s = 0; s < it.sets; s++) {
       steps.push({ k: 'work', item: it.id, set: s });
       if (s < it.sets - 1 && it.rest > 0) steps.push({ k: 'rest', dur: it.rest });
@@ -307,7 +365,8 @@ function startTraining(planId) {
   go('training');
 }
 
-function itemOf(step) { return db.active.items.find((i) => i.id === step.item); }
+function itemOf(step) { return PE.find(db.active.items, step.item)?.it; }
+const activeExercises = () => PE.flatten(db.active.items).filter(({ it }) => db.active.log[it.id]?.some(Boolean));
 
 function enterStep(autoStart) {
   const A = db.active, step = A.steps[A.idx];
@@ -364,7 +423,7 @@ function viewTraining() {
 
   if (step.k === 'rest') {
     const nx = A.steps[A.idx + 1];
-    const nxText = nx ? (nx.k === 'rest' ? 'Pause' : `${byId[itemOf(nx).exId].name} – Satz ${nx.set + 1}`) : 'Geschafft';
+    const nxText = nx ? (nx.k === 'rest' ? 'Pause' : nx.ss ? `${nx.ss} ${byId[itemOf(nx).exId].name} – Runde ${nx.set + 1}` : `${byId[itemOf(nx).exId].name} – Satz ${nx.set + 1}`) : 'Geschafft';
     return top + `<section class="tr-step">
       <div class="rest-head"><div class="ic-circle rose">${icon.rest}</div></div>
       <h2 class="tr-name">Pause</h2>
@@ -376,13 +435,18 @@ function viewTraining() {
 
   const it = itemOf(step), ex = byId[it.exId];
   const target = it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`;
+  const nx = A.steps[A.idx + 1];
+  const ssNext = step.ss && nx?.k === 'work' && nx.ss && nx.set === step.set
+    ? `<p class="next">Danach direkt: <b>${nx.ss} ${esc(byId[itemOf(nx).exId].name)}</b></p>` : '';
+  const setLine = step.ss ? `<span class="tag-l">${step.ss}</span> Superset · Runde ${step.set + 1} von ${step.of}` : `Satz ${step.set + 1} von ${it.sets}`;
   return top + `<section class="tr-step">
     <div class="fig-tr" data-anim="${ex.id}"></div>
     <h2 class="tr-name">${esc(ex.name)}</h2>
-    <p class="tr-set">Satz ${step.set + 1} von ${it.sets} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}</p>
+    <p class="tr-set">${setLine} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}</p>
     ${it.mode === 'time' ? timerBlock(false) : stepper('reps', 'Wiederholungen', A.cur.reps, 1)}
     ${stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper')}
     <button class="btn primary big" data-act="done">${icon.check}Satz erledigt</button>
+    ${ssNext}
     </section>` + nav + sheet;
 }
 
@@ -440,13 +504,13 @@ function startTicker() {
 function viewSummary() {
   const A = db.active;
   const mins = fmtDur((Date.now() - A.startedAt) / 1000);
-  const rows = A.items.filter((i) => i.type === 'ex' && A.log[i.id]?.some(Boolean))
-    .map((i) => `<li class="ck-row"><span class="ck">${icon.check}</span><div><b>${esc(byId[i.exId].name)}</b><small>${setsText(A.log[i.id].filter(Boolean), i.mode)}</small></div></li>`).join('');
+  const done = activeExercises();
+  const rows = done.map(({ it: i, label }) => `<li class="ck-row"><span class="ck">${icon.check}</span><div><b>${label ? `<span class="tag-l">${label}</span> ` : ''}${esc(byId[i.exId].name)}</b><small>${setsText(A.log[i.id].filter(Boolean), i.mode)}</small></div></li>`).join('');
   const quote = SIGNATURES[Math.floor((A.startedAt / 1000) % SIGNATURES.length)];
   return `<section class="summary">
     ${LEAF}
     <h2 class="hero-title">Stark<span class="accent">gemacht!</span></h2>
-    <p class="sub">${mins} · ${A.items.filter((i) => i.type === 'ex' && A.log[i.id]?.some(Boolean)).length} Übungen</p>
+    <p class="sub">${mins} · ${done.length} Übung${done.length === 1 ? '' : 'en'}</p>
     <ul class="list checklist-list">${rows || '<li>Keine Sätze erfasst.</li>'}</ul>
     <blockquote class="quote-card">${quote}</blockquote>
     <button class="btn primary big" data-act="finish">${icon.check}Speichern</button>
@@ -456,8 +520,7 @@ function viewSummary() {
 
 function finishTraining() {
   const A = db.active;
-  const items = A.items.filter((i) => i.type === 'ex' && A.log[i.id]?.some(Boolean))
-    .map((i) => ({ exId: i.exId, mode: i.mode, sets: A.log[i.id].filter(Boolean) }));
+  const items = activeExercises().map(({ it: i, label }) => ({ exId: i.exId, mode: i.mode, sets: A.log[i.id].filter(Boolean), ...(label ? { ss: label } : {}) }));
   if (items.length) {
     const s = { id: uid(), date: A.startedAt, end: Date.now(), planId: A.planId, planName: A.planName, items };
     db.history.push(s);
@@ -540,7 +603,7 @@ function viewSession(id) {
   return header(s.planName, ['#/verlauf', 'Verlauf']) + `
     <p class="sub">${fmtDate(s.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${new Date(s.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</p>
     <ul class="list">${s.items.map((it) => `<li><a href="#/fortschritt/${it.exId}">${byId[it.exId] ? circleFig(byId[it.exId], 'sm') : ''}
-      <div><b>${esc(byId[it.exId]?.name || it.exId)}</b><small>${setsText(it.sets, it.mode)}</small></div></a></li>`).join('')}</ul>
+      <div><b>${it.ss ? `<span class="tag-l">${it.ss}</span> ` : ''}${esc(byId[it.exId]?.name || it.exId)}</b><small>${setsText(it.sets, it.mode)}</small></div></a></li>`).join('')}</ul>
     <button class="btn danger-text" data-act="del-session" data-id="${s.id}">Training löschen</button>`;
 }
 
@@ -692,7 +755,7 @@ document.addEventListener('click', (ev) => {
     case 'dup-plan': {
       const src = planById(btn.dataset.plan);
       const p = JSON.parse(JSON.stringify(src));
-      p.id = uid(); p.name = src.name + ' (Kopie)'; p.items.forEach((i) => { i.id = uid(); });
+      p.id = uid(); p.name = src.name + ' (Kopie)'; PE.reId(p.items, uid);
       db.plans.splice(db.plans.indexOf(src) + 1, 0, p); save(); render();
       break;
     }
@@ -706,12 +769,26 @@ document.addEventListener('click', (ev) => {
       p.items.push({ id: uid(), type: 'rest', dur: 90 }); save(); render();
       break;
     }
-    case 'mv': case 'rm': case 'mode': {
+    case 'ptoggle': {
+      if (ev.target.closest('[data-handle]')) break;
+      const id = btn.closest('[data-id]').dataset.id;
+      planOpen = planOpen === id ? null : id; render();
+      break;
+    }
+    case 'pstep': case 'pmode': case 'punlink': case 'psplit': case 'premove': {
       const p = planById(planEl.dataset.plan);
-      const i = p.items.findIndex((x) => x.id === itemEl.dataset.item);
-      if (act === 'mv') { const j = i + +btn.dataset.dir; [p.items[i], p.items[j]] = [p.items[j], p.items[i]]; }
-      if (act === 'rm') p.items.splice(i, 1);
-      if (act === 'mode') p.items[i].mode = btn.dataset.mode;
+      const id = btn.closest('[data-for]').dataset.for;
+      const it = PE.find(p.items, id)?.it;
+      if (!it) break;
+      if (act === 'pstep') {
+        const w = btn.closest('[data-pfield]'), key = w.dataset.pfield, d = +btn.dataset.d * +w.dataset.step;
+        if (key === 'weight') { const v = (it.weight || 0) + d; it.weight = v > 0 ? v : null; }
+        else it[key] = Math.max(PLAN_MIN[key] ?? 0, (it[key] || 0) + d);
+      }
+      if (act === 'pmode') it.mode = btn.dataset.mode;
+      if (act === 'punlink') PE.unlink(p.items, id);
+      if (act === 'psplit') { PE.split(p.items, id); planOpen = null; }
+      if (act === 'premove') { PE.remove(p.items, id); PE.normalize(p.items); planOpen = null; }
       save(); render();
       break;
     }
@@ -777,16 +854,14 @@ document.addEventListener('change', (ev) => {
   const t = ev.target;
   if (t.dataset.planName) {
     const p = planById(t.dataset.planName); p.name = t.value.trim() || 'Ohne Namen'; save();
-  } else if (t.dataset.f) {
+  } else if (t.dataset.pf) {
     const p = planById(t.closest('[data-plan]').dataset.plan);
-    const it = p.items.find((x) => x.id === t.closest('[data-item]').dataset.item);
-    const v = num(t.value);
-    if (t.dataset.f === 'weight') it.weight = v && v > 0 ? v : null;
-    else if (t.dataset.f === 'sets') it.sets = Math.max(1, Math.round(v || 1));
-    else it[t.dataset.f] = Math.max(0, Math.round(v ?? 0));
-    save();
-    const { n, s } = planEstimate(p);
-    $('.sub').textContent = `${n} Übung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)} · wird automatisch gespeichert`;
+    const it = PE.find(p.items, t.closest('[data-for]').dataset.for)?.it;
+    if (!it) return;
+    const key = t.dataset.pf, v = num(t.value);
+    if (key === 'weight') it.weight = v && v > 0 ? v : null;
+    else it[key] = Math.max(PLAN_MIN[key] ?? 0, Math.round(v ?? 0));
+    save(); render();
   } else if (t.dataset.cur) {
     const v = num(t.value);
     db.active.cur[t.dataset.cur] = t.dataset.cur === 'weight' ? (v && v > 0 ? v : null) : Math.max(0, v ?? 0);
@@ -803,6 +878,20 @@ document.addEventListener('change', (ev) => {
 
 // Enter im Zahlenfeld schließt die Tastatur
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.matches('input:not([type=search])')) ev.target.blur(); });
+
+// Untergrenzen der Plan-Werte
+const PLAN_MIN = { sets: 1, rounds: 1, reps: 1, dur: 5, rest: 0 };
+
+// Drag & Drop im Plan-Editor (Sortieren, Superset bilden)
+PE.initDrag((srcId, targetId, pos) => {
+  const p = planById(route()[1]);
+  if (!p) return;
+  const before = PE.find(p.items, srcId)?.parent?.id;
+  PE.moveTo(p.items, srcId, targetId, pos, uid);
+  save(); render();
+  if (pos === 'merge') toast('Superset gebildet');
+  else if (before && !PE.find(p.items, srcId)?.parent) toast('Aus Superset gelöst');
+});
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
 

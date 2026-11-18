@@ -227,24 +227,48 @@ svg .fill { fill: currentColor; stroke: none; }
 .plan-actions .btn { min-height: 42px; padding: 0 16px; }
 .plan-actions .btn.primary { flex: 1; }
 
-/* ── Plan-Editor ─────────────────────────────── */
-.items { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-.item { background: var(--color-surface); border-radius: var(--r-card); padding: 14px 16px 16px; }
-.item.rest { background: transparent; border: 1px dashed var(--color-line); }
-.item-head { display: flex; align-items: center; gap: 12px; }
-.item-name { flex: 1; min-width: 0; }
-.item-name b { display: block; font-weight: 600; line-height: 1.3; }
-.item-name small { font-size: 13px; }
-.tools { display: flex; gap: 4px; }
-.tools .icon-btn { width: 34px; height: 34px; }
-.seg { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); background: var(--color-fill); border-radius: 999px; padding: 4px; margin: 14px 0 12px; }
+/* ── Plan-Editor: eine Zeile für Übung, Pause, Superset-Mitglied ── */
+.plist { display: grid; gap: 8px; margin-top: 8px; }
+.prow { background: var(--color-surface); border-radius: var(--r-card); position: relative; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: box-shadow .15s, transform .15s; }
+.prow-main { display: flex; align-items: center; gap: 14px; padding: 8px 4px 8px 10px; min-height: 68px; cursor: pointer; }
+.prow-txt { flex: 1; min-width: 0; }
+.prow-txt b { display: flex; align-items: center; gap: 8px; font-weight: 600; line-height: 1.3; }
+.prow-txt small { font-size: 13px; margin-top: 2px; }
+.rest-row { background: transparent; border: 1px dashed var(--color-line); }
+.tag-l { display: inline-block; font: 600 12px/1 var(--font-display); letter-spacing: .06em; background: var(--color-sage); color: var(--color-on-sage); border-radius: 999px; padding: 4px 7px; flex: none; vertical-align: 1px; }
+.handle { width: 44px; height: 52px; flex: none; border: 0; background: none; color: var(--color-text-muted); display: grid; place-items: center; cursor: grab; touch-action: none; border-radius: 14px; }
+.handle svg { width: 22px; height: 22px; }
+
+/* Superset: salbeigrüne Gruppe */
+.pgroup { background: var(--color-sage-light); border-radius: var(--r-box); padding: 4px 6px 6px; position: relative; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: box-shadow .15s; }
+.g-head { display: flex; align-items: center; gap: 10px; padding: 6px 0 6px 12px; cursor: pointer; }
+.g-txt { flex: 1; min-width: 0; }
+.g-label { font: 600 16px/1.2 var(--font-display); letter-spacing: .06em; text-transform: var(--display-case); }
+.g-txt small { color: var(--color-text); opacity: .8; font-size: 13px; }
+.g-members { display: grid; gap: 6px; }
+.pgroup > .pfields { background: var(--color-surface); border-radius: var(--r-card); padding: 12px; margin-bottom: 6px; }
+
+/* Aufgeklappte Regler – dieselben Stepper wie im Training */
+.pfields { display: grid; gap: 8px; padding: 0 10px 12px; }
+.pfields .stepper-wrap { background: var(--color-bg); margin: 0; }
+.pfields .stepper button { background: var(--color-surface); }
+.pfields .seg { margin: 0; }
+.pfields .hint { margin: 0; font-size: 13px; }
+.f-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.btn.small { min-height: 40px; padding: 0 14px; font-size: 14px; }
+
+/* Ziehen */
+.dragging { opacity: .3; }
+.drag-ghost { position: fixed; z-index: 50; pointer-events: none; margin: 0; transform: scale(1.03); box-shadow: 0 12px 32px rgba(31, 31, 31, .2); }
+.drop-line { position: fixed; z-index: 49; height: 3px; border-radius: 2px; background: var(--color-forest); pointer-events: none; display: none; }
+.merge-hover { box-shadow: 0 0 0 2px var(--color-sage); }
+.merge-armed { box-shadow: 0 0 0 3px var(--color-forest); transform: scale(1.02); }
+.merge-armed::after { content: 'Superset bilden'; position: absolute; right: 52px; top: 50%; transform: translateY(-50%); background: var(--color-forest); color: var(--color-on-forest); font: 600 12px/1 var(--font-body); padding: 7px 12px; border-radius: 999px; pointer-events: none; }
+.pgroup.merge-armed::after { content: 'Hinzufügen'; top: 28px; }
+
+.seg { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); background: var(--color-fill); border-radius: 999px; padding: 4px; }
 .seg button { border: 0; background: none; color: var(--color-text-muted); font: 500 14px var(--font-body); padding: 8px; border-radius: 999px; cursor: pointer; }
 .seg button.on { background: var(--color-surface); color: var(--color-text); font-weight: 600; box-shadow: var(--shadow-soft); }
-.fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.item.rest .fields { grid-template-columns: 1fr 3fr; margin-top: 12px; }
-.fields label { font-size: 12px; color: var(--color-text-muted); display: grid; gap: 4px; }
-.fields input { width: 100%; font: 600 22px/1 var(--font-display); padding: 10px 4px; border-radius: 14px; border: 1px solid var(--color-line); background: var(--color-bg); color: var(--color-text); text-align: center; }
-.fields input::placeholder { font: 500 13px var(--font-body); color: var(--color-text-muted); }
 input:focus { outline: 2px solid var(--color-forest); outline-offset: -1px; }
 
 /* ── Training ────────────────────────────────── */
@@ -264,7 +288,7 @@ body[data-view="training"] { padding-bottom: calc(env(safe-area-inset-bottom) + 
 .stepper-wrap > span { color: var(--color-text-muted); font-size: 15px; }
 .stepper { display: flex; align-items: center; gap: 4px; }
 .stepper button { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--color-fill); color: var(--color-text); font: 400 24px/1 var(--font-body); cursor: pointer; }
-.stepper input { width: 76px; height: 48px; text-align: center; font: 600 32px/48px var(--font-display); border: 0; background: none; color: var(--color-text); padding: 0; }
+.stepper input { width: 76px; height: 48px; text-align: center; font: 600 32px/normal var(--font-display); border: 0; background: none; color: var(--color-text); padding: 0; }
 .stepper input::placeholder { font: 500 14px var(--font-body); color: var(--color-text-muted); }
 
 .timer { position: relative; width: min(64vw, 248px); aspect-ratio: 1; margin: 4px auto 16px; }
@@ -366,7 +390,6 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
-@media (max-width: 360px) { .fields { grid-template-columns: 1fr 1fr; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
 /* ── Einstellungen ───────────────────────────── */
