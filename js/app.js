@@ -6,6 +6,8 @@ import { db, save, uid, exportJSON, importJSON } from './store.js';
 import * as T from './timer.js';
 import * as PE from './planedit.js';
 import { PAUSE_LINES, DONE_TITLES, QUOTES, SAVE_TOASTS } from './texts.js';
+import { seedDemo } from './demo-seed.js'; // DEMO(ux-review): vor dem Merge entfernen
+if (seedDemo(db)) save();
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -26,11 +28,37 @@ let planOpen = null; // aufgeklappte Zeile im Plan-Editor
 let equipSheet = false; // Sheet „Meine Ausrüstung“ im Katalog
 let addSheet = false; // Auswahlfenster „Zu Plan hinzufügen“ auf der Übungsseite
 let showTpl = null;    // Vorlagen aufgeklappt? null = automatisch (offen, solange es keine Pläne gibt)
+let tplSheet = null;   // Vorschau einer Vorlage (ID)
+let planMenu = false;  // „···“-Menü im Plan-Editor
+let startAsk = null;   // Rückfrage vor dem Start mit Entwurf (Plan-ID) – nur Demo-Variante K3 C
+
+// DEMO(ux-review): Varianten zum Vergleichen, umschaltbar über den Knopf „Varianten“. Vor dem Merge entfernen.
+const DEMO_OPTS = {
+  k3: { label: 'Plan-Editor: Knöpfe bei Entwurf', opts: [['a', 'A · Speichern + Starten'], ['b', 'B · Verwerfen + Speichern + Starten'], ['c', 'C · Starten fragt nach']] },
+  k4: { label: 'Training: Zurück / Überspringen', opts: [['a', 'A · Im Kopf neben dem Zähler'], ['b', 'B · Neben der Hauptaktion']] },
+  sec: { label: 'Abschnitts-Überschrift', opts: [['pill', 'A · Pill'], ['over', 'B · Dachzeile'], ['serif', 'C · Serif']] },
+};
+let demoSheet = false;
+const demo = (() => { try { return { k3: 'a', k4: 'a', sec: 'pill', ...JSON.parse(localStorage.getItem('flow.demo') || '{}') }; } catch { return { k3: 'a', k4: 'a', sec: 'pill' }; } })();
+const saveDemo = () => { try { localStorage.setItem('flow.demo', JSON.stringify(demo)); } catch {} document.documentElement.dataset.sec = demo.sec; };
+document.documentElement.dataset.sec = demo.sec;
 let wakeLock = null;
 
+// Designs: alle mit denselben Schriften, Formen und Regeln (docs/DESIGN.md), nur die Farbfamilien wechseln.
+// DEMO(ux-review): Sand, Nebel und Lavendel sind Vorschläge – nach der Entscheidung bleiben nur die gewählten.
+const DESIGNS = [
+  { id: 'flow', name: 'Salbei', note: 'Creme, Salbei & Rosé', sw: ['#F3F0EB', '#9DAA96', '#D4A19C', '#3F6B5C'] },
+  { id: 'sand', name: 'Sand', note: 'Sand, Ton & Umbra', sw: ['#F4EEE6', '#C2A68C', '#C9978A', '#7A4B32'], proposal: true },
+  { id: 'nebel', name: 'Nebel', note: 'Nebelgrau, Meer & Petrol', sw: ['#EFF1EF', '#98AEB0', '#D0A7A5', '#2E5E68'], proposal: true },
+  { id: 'lavendel', name: 'Lavendel', note: 'Lavendel, Rosé & Pflaume', sw: ['#F3F0F2', '#A79DB5', '#D3A3A9', '#5B4A72'], proposal: true },
+];
 T.setSound(db.sound);
+// Muskelgruppen-Filter: Mehrfachauswahl (früher ein einzelner Wert in db.muscle)
+if (!Array.isArray(db.muscles)) { db.muscles = db.muscle ? [db.muscle] : []; delete db.muscle; }
+// Design „Klassisch“ gibt es nicht mehr
+if (!DESIGNS.some((d) => d.id === db.design)) db.design = 'flow';
 
-// Design ('flow' | 'classic') und Erscheinungsbild ('system' | 'light' | 'dark').
+// Design (DESIGNS) und Erscheinungsbild ('system' | 'light' | 'dark').
 // Kopie in localStorage für das Inline-Skript im <head> (kein Aufblitzen beim Start).
 function applyTheme() {
   const t = db.theme || 'system', d = db.design || 'flow', root = document.documentElement;
@@ -148,6 +176,11 @@ const icon = {
   bulb: '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>',
   bell: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></svg>',
   dumbbell: '<svg viewBox="0 0 24 24"><path d="M3.5 9.5v5M6.5 7.5v9M17.5 7.5v9M20.5 9.5v5M6.5 12h11"/></svg>',
+  dots: '<svg viewBox="0 0 24 24"><circle class="fill" cx="5.5" cy="12" r="1.6"/><circle class="fill" cx="12" cy="12" r="1.6"/><circle class="fill" cx="18.5" cy="12" r="1.6"/></svg>',
+  copy: '<svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5M14 11v5"/></svg>',
+  undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>',
   bellOff: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></svg>',
 };
 
@@ -179,8 +212,10 @@ function pickText(pool, salt, i = 0) {
 }
 
 // AppHeader: Titel links, Signet rechts, dünne Linie darunter
-const header = (title, back) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
-  <div class="head-row"><h1>${esc(title)}</h1>${LOGO}</div></header>`;
+// right: Element statt Signet (z. B. „···“ oder ein Link)
+const header = (title, back, right = LOGO) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
+  <div class="head-row"><h1>${esc(title)}</h1>${right}</div></header>`;
+const more = (t) => `<span class="more">${esc(t)}${icon.chev}</span>`;
 const pill = (t) => `<h2 class="pill-label">${t}</h2>`;
 const empty = (line, sub = '', cta = '') => `<div class="empty">${LEAF}<p class="serif">${line}</p>${sub ? `<p>${sub}</p>` : ''}${cta}</div>`;
 const circleFig = (ex, cls = "") => `<div class="ic-circle ${cls}">${figureStatic(ex, true)}</div>`;
@@ -191,7 +226,7 @@ const go = (h) => { location.hash = '#/' + h; };
 window.addEventListener('hashchange', () => { equipSheet = false; render(); });
 
 function render() {
-  if (location.hash !== lastHash) addSheet = false; // Auswahlfenster nicht auf neue Seiten mitnehmen
+  if (location.hash !== lastHash) { addSheet = false; tplSheet = null; planMenu = false; startAsk = null; } // Fenster nicht auf neue Seiten mitnehmen
   stops.forEach((f) => f()); stops = [];
   clearInterval(ticker); ticker = null;
   const [view, a, b] = route();
@@ -228,6 +263,23 @@ function render() {
   if (db.active) $('#resume-name').textContent = db.active.planName;
 
   if (location.hash !== lastHash) { window.scrollTo(0, 0); lastHash = location.hash; }
+  renderDemo();
+}
+
+// DEMO(ux-review): Knopf „Varianten“ + Auswahlfenster in einer eigenen Ebene. Vor dem Merge entfernen.
+function renderDemo() {
+  let el = $('#demo-layer');
+  if (!el) { el = document.createElement('div'); el.id = 'demo-layer'; document.body.append(el); }
+  const seg = (k, opts, cur) => `<div class="demo-opts">${opts.map(([v, l]) =>
+    `<button class="${cur === v ? 'on' : ''}" data-act="demo-set" data-k="${k}" data-v="${v}" aria-pressed="${cur === v}">${l}</button>`).join('')}</div>`;
+  el.innerHTML = `<button class="demo-btn" data-act="demo-open">Varianten</button>` + (demoSheet ? `<div class="sheet-bg" data-act="demo-close"></div>
+    <div class="sheet demo-sheet" role="dialog" aria-label="Varianten">
+      <div class="sheet-head"><p class="serif">Varianten</p><button class="link" data-act="demo-close">Fertig</button></div>
+      <p class="sheet-hint">Nur in dieser Demo. Die Auswahl gilt sofort auf allen Seiten.</p>
+      ${Object.entries(DEMO_OPTS).map(([k, o]) => `<p class="demo-l">${o.label}</p>${seg(k, o.opts, demo[k])}`).join('')}
+      <p class="demo-l">Design</p>${seg('design', DESIGNS.map((d) => [d.id, d.name]), db.design || 'flow')}
+      <p class="demo-l">Erscheinungsbild</p>${seg('theme', [['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']], db.theme || 'system')}
+    </div>` : '');
 }
 const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf', einstellungen: 'einstellungen' })[v];
 
@@ -237,13 +289,13 @@ function viewCatalog(pickFor) {
   const head = plan ? header('Übung hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
   return `${head}
     <input class="search" type="search" id="q" placeholder="Übung suchen" value="${esc(catQuery)}" autocomplete="off">
-    <div class="chips scroll" role="radiogroup" aria-label="Muskelgruppe">
+    <div class="chips scroll" role="group" aria-label="Filter">
       <button class="chip filter" data-act="equip-sheet" aria-haspopup="dialog">${icon.dumbbell}Ausrüstung${db.equip.length ? ` <span class="cnt">${db.equip.length}</span>` : ''}</button>
       ${[{ id: '', name: 'Alle' }, ...MUSCLE_GROUPS].map((g) => {
-      const on = (db.muscle || '') === g.id;
-      return `<button class="chip ${on ? 'on' : ''}" data-act="muscle" data-id="${g.id}" role="radio" aria-checked="${on}">${g.name}</button>`;
+      const on = g.id ? db.muscles.includes(g.id) : !db.muscles.length;
+      return `<button class="chip ${on ? 'on' : ''}" data-act="muscle" data-id="${g.id}" aria-pressed="${on}">${g.name}</button>`;
     }).join('')}</div>
-    <div id="list" class="ilist"></div>
+    <div id="list" class="lgroup"></div>
     ${equipSheet ? `<div class="sheet-bg" data-act="equip-sheet-close"></div>
     <div class="sheet equip-sheet" role="dialog" aria-label="Meine Ausrüstung">
       <div class="sheet-head"><p class="serif">Meine Ausrüstung</p><button class="link" data-act="equip-all">${db.equip.length === EQUIPMENT.length ? 'Alle abwählen' : 'Alle wählen'}</button></div>
@@ -256,16 +308,14 @@ function viewCatalog(pickFor) {
 function renderCatalogList(pickFor) {
   const q = catQuery.trim().toLowerCase();
   const list = EXERCISES.filter((ex) => ex.equip.every((e) => db.equip.includes(e)))
-    .filter((ex) => !db.muscle || ex.groups.includes(db.muscle))
+    .filter((ex) => !db.muscles.length || ex.groups.some((g) => db.muscles.includes(g)))
     .filter((ex) => !q || (ex.name + ' ' + ex.muscles).toLowerCase().includes(q));
   const el = $('#list');
-  if (!list.length) { el.innerHTML = empty('Keine passende Übung.', 'Wähl mehr Ausrüstung, eine andere Muskelgruppe oder ändere die Suche.'); return; }
-  el.innerHTML = list.map((ex) => `
-    <a class="ilist-item" href="${pickFor ? '#' : '#/uebung/' + ex.id}" ${pickFor ? `data-act="pick" data-plan="${pickFor}" data-ex="${ex.id}"` : ''}>
-      ${circleFig(ex)}
-      <div class="ilist-text"><b>${esc(ex.name)}${ex.mode === 'time' ? `<span class="t-ic" aria-label="auf Zeit">${icon.rest}</span>` : ''}</b><small>${esc(ex.muscles)}</small></div>
-      <span class="chev">${pickFor ? icon.plus : icon.chev}</span>
-    </a>`).join('');
+  if (!list.length) { el.innerHTML = empty('Keine passende Übung.', 'Wähl mehr Ausrüstung, weitere Muskelgruppen oder ändere die Suche.'); return; }
+  el.innerHTML = list.map((ex) => lrow({
+    attrs: pickFor ? `href="#" data-act="pick" data-plan="${pickFor}" data-ex="${ex.id}"` : `href="#/uebung/${ex.id}"`,
+    ic: circleFig(ex), title: esc(ex.name) + (ex.mode === 'time' ? `<span class="t-ic" aria-label="auf Zeit">${icon.rest}</span>` : ''),
+    sub: esc(ex.muscles), right: pickFor ? icon.plus : icon.chev })).join('');
 }
 
 // Beschreibung → erster Satz als Hinweis, Rest als Checkliste
@@ -295,53 +345,64 @@ function viewExercise(id) {
         return `<button class="sheet-row" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">${planIc(sp, 'sm')}
           <span><b>${esc(sp.name)}</b><small>${n} Übung${n === 1 ? '' : 'en'}${draftOf(p.id) ? ' · nicht gespeichert' : ''}</small></span>${icon.plus}</button>`;
       }).join('')}</div>
-      <button class="btn ghost" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}Neuer Plan</button>
-      <button class="btn" data-act="add-sheet-close">Abbrechen</button></div>` : ''}`;
+      <button class="btn" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}Neuer Plan</button>
+      <button class="btn text" data-act="add-sheet-close">Abbrechen</button></div>` : ''}`;
 }
+
+// ── Listenzeile (Baukasten): Kreis-Icon · Titel · eine Unterzeile · rechts ein Element ──
+// right sitzt in der Zeile (Chevron, Wert), after daneben als eigener Knopf (z. B. Play).
+const lrow = ({ tag = 'a', attrs = '', ic = '', title, sub = '', right = icon.chev, after = '', cls = '' }) =>
+  `<div class="lrow ${cls}"><${tag} class="lrow-main" ${attrs}>${ic}<span class="lrow-txt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</span>${right ? `<span class="lrow-r">${right}</span>` : ''}</${tag}>${after}</div>`;
+
+// Kategorie nur nennen, wenn der Titel sie nicht schon sagt (das Icon zeigt sie ohnehin)
+const catText = (name, label) => label && !name.toLowerCase().includes(label.toLowerCase()) ? `${label} · ` : '';
 
 // ── Pläne ─────────────────────────────────────────────────
 function viewPlans() {
+  const add = `<button class="icon-btn head-btn" data-act="new-plan" aria-label="Neuer Plan">${icon.plus}</button>`;
   const top = !db.plans.length
     ? empty('Noch kein Training geplant.', 'Starte mit deinem Körper, nicht gegen ihn – mit einer Vorlage oder einem eigenen Plan.',
       `<button class="btn primary" data-act="new-plan">${icon.plus}Eigenen Plan anlegen</button>`)
-    : `<div class="stack">
-    ${db.plans.map((p) => {
-      const est = planEstimate(p), n = est.n;
-      return `<div class="plan">
-        <a class="plan-main" href="#/plan/${p.id}">${planIc(p)}<span class="plan-txt"><b>${esc(p.name)}</b><small>${planLabel(p) ? `${planLabel(p)} · ` : ''}${planMeta(est)}</small>${draftOf(p.id) ? `<span class="badge draft">Nicht gespeicherte Änderungen</span>` : ''}</span></a>
-        <div class="plan-actions">
-          <button class="btn primary" data-act="start" data-plan="${p.id}" ${n ? '' : 'disabled'}>${icon.play}Start</button>
-          <button class="btn" data-act="dup-plan" data-plan="${p.id}">Kopieren</button>
-          <button class="btn danger-text" data-act="del-plan" data-plan="${p.id}">Löschen</button>
-        </div></div>`;
-    }).join('')}
-    <button class="btn ghost" data-act="new-plan">${icon.plus}Neuer Plan</button>
-    </div>`;
-  return header('Pläne') + top + templatesBlock();
+    : `<div class="lgroup">${db.plans.map((p) => {
+      const est = planEstimate(p);
+      const ic = `<span class="ic-wrap">${planIc(p)}${draftOf(p.id) ? '<i class="draft-dot" aria-label="Nicht gespeicherte Änderungen"></i>' : ''}</span>`;
+      return lrow({ attrs: `href="#/plan/${p.id}"`, ic, title: esc(p.name), sub: catText(p.name, planLabel(p)) + planMeta(est), right: '',
+        after: `<button class="play-btn" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'} aria-label="${esc(p.name)} starten">${icon.play}</button>` });
+    }).join('')}</div>`;
+  return header('Pläne', null, add) + top + templatesBlock() + (tplSheet ? templateSheet(tplSheet) : '');
 }
 
-// Vorlagen: Beispielpläne zum Übernehmen (js/templates.js)
+const tplEquip = (exs) => {
+  const e = [...new Set(exs.flatMap((x) => byId[x.exId].equip))].map((id) => EQUIPMENT.find((q) => q.id === id).name);
+  return e.length ? e.join(', ') : 'Ohne Geräte';
+};
+
+// Vorlagen: dieselben Zeilen ohne Knopf, Antippen öffnet die Vorschau (js/templates.js)
 function templatesBlock() {
   const open = showTpl ?? !db.plans.length;
-  const head = `<button class="tpl-toggle" data-act="tpl-toggle" aria-expanded="${open}">
-    <span class="pill-label">Vorlagen</span><span class="more">${open ? 'Einklappen' : `${TEMPLATES.length} Beispielpläne`}</span></button>`;
+  const head = `<div class="sec-head">${pill('Vorlagen')}<button class="link" data-act="tpl-toggle" aria-expanded="${open}">${open ? 'Einklappen' : more(`${TEMPLATES.length} Beispielpläne`)}</button></div>`;
   if (!open) return head;
-  return head + `<p class="hint">Übernimm eine Vorlage als eigenen Plan und pass Gewichte und Wiederholungen danach an dich an.</p>
-    <div class="stack">${TEMPLATES.map((t) => {
-      const exs = PE.flatten(t.items).map((x) => x.it);
-      const est = planEstimate(t), label = planIcon(t.name, exs).label;
-      const equip = [...new Set(exs.flatMap((e) => byId[e.exId].equip))].map((id) => EQUIPMENT.find((e) => e.id === id).name);
-      const taken = db.plans.some((p) => p.tpl === t.id);
-      return `<div class="plan tpl">
-        <div class="plan-main">${planIconHTML(t.name, exs)}<span class="plan-txt"><b>${esc(t.name)}</b>
-          <small>${label ? `${label} · ` : ''}${planMeta(est)}</small>
-          <small class="tpl-equip">${equip.length ? equip.join(' · ') : 'Ohne Geräte'}</small></span></div>
-        <p class="tpl-note">${esc(t.note)}</p>
-        <div class="plan-actions">
-          <button class="btn ${taken ? 'ghost' : 'primary'}" data-act="tpl-add" data-tpl="${t.id}">${icon.plus}${taken ? 'Nochmal übernehmen' : 'Übernehmen'}</button>
-          ${taken ? `<span class="tpl-taken">${icon.check}Schon in deinen Plänen</span>` : ''}
-        </div></div>`;
-    }).join('')}</div>`;
+  return head + `<div class="lgroup">${TEMPLATES.map((t) => {
+    const exs = planExercises(t), est = planEstimate(t);
+    const taken = db.plans.some((p) => p.tpl === t.id);
+    return lrow({ tag: 'button', attrs: `data-act="tpl-open" data-tpl="${t.id}"`, ic: planIconHTML(t.name, exs), title: esc(t.name),
+      sub: `${tplEquip(exs)} · ca. ${fmtDur(est.s)}`, right: taken ? `<span class="taken" aria-label="Schon in deinen Plänen">${icon.check}</span>` : icon.chev });
+  }).join('')}</div>`;
+}
+
+function templateSheet(id) {
+  const t = TEMPLATES.find((x) => x.id === id);
+  if (!t) return '';
+  const exs = planExercises(t), est = planEstimate(t), taken = db.plans.some((p) => p.tpl === t.id);
+  const rows = PE.flatten(t.items).map(({ it, label }) => `<div class="li"><span>${label ? `<span class="tag-l">${label}</span> ` : ''}${esc(byId[it.exId].name)}</span><small>${exSummary(it, !!label).replace(/ · Pause \d+ s$/, '')}</small></div>`).join('');
+  return `<div class="sheet-bg" data-act="tpl-close"></div>
+    <div class="sheet tpl-sheet" role="dialog" aria-label="Vorlage ${esc(t.name)}">
+      <div class="tpl-top">${planIconHTML(t.name, exs)}<div><p class="serif">${esc(t.name)}</p><small>${planMeta(est)} · ${tplEquip(exs)}</small></div></div>
+      <p class="sheet-hint">${esc(t.note)}</p>
+      <div class="listbox">${rows}</div>
+      ${taken ? `<p class="sheet-hint ok">${icon.check}Schon in deinen Plänen</p>` : ''}
+      <button class="btn primary big" data-act="tpl-add" data-tpl="${t.id}">${icon.plus}${taken ? 'Nochmal übernehmen' : 'Übernehmen'}</button>
+      <button class="btn text" data-act="tpl-close">Abbrechen</button></div>`;
 }
 
 function viewPlanEditor(id) {
@@ -349,20 +410,55 @@ function viewPlanEditor(id) {
   if (!p) return header('Plan', ['#/plaene', 'Pläne']) + empty('Diesen Plan gibt es nicht (mehr).');
   const est = planEstimate(p), dirty = !!draftOf(id);
   const list = p.items.map((it) => it.type === 'group' ? groupBlock(p, it) : it.type === 'rest' ? restRow(it) : exRow(p, it, null)).join('');
+  const tip = p.items.length && !db.hints?.drag;
   return `<header class="app-head"><a class="back" href="#/plaene">${icon.back}Pläne</a>
-      <div class="head-row"><input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans">${LOGO}</div></header>
-    <div class="sub plan-sub" id="plan-meta">${planIc(p, 'xs')}<span>${planLabel(p) ? `${planLabel(p)} · ` : ''}${planMeta(est)}${dirty ? ' · <span class="dirty">nicht gespeichert</span>' : ''}</span></div>
-    ${p.items.length ? `<p class="hint">Am Griff ziehen zum Sortieren. Auf eine Übung ziehen und kurz halten bildet ein Superset.</p>` : ''}
+      <div class="head-row"><input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans">
+      <button class="icon-btn head-btn" data-act="plan-menu" aria-label="Weitere Aktionen">${icon.dots}</button></div></header>
+    <div class="sub plan-sub" id="plan-meta">${planIc(p, 'xs')}<span>${catText(p.name, planLabel(p))}${planMeta(est)}${dirty ? ' · <span class="dirty">nicht gespeichert</span>' : ''}</span></div>
+    ${tip ? `<div class="hint-tip">${icon.bulb}<span>Am Griff ziehen zum Sortieren. Auf eine Übung ziehen und kurz halten bildet ein Superset.</span>
+      <button class="tip-x" data-act="hint-off" aria-label="Tipp schließen">${icon.x}</button></div>` : ''}
     <div class="plist" id="plan-list" data-plan="${p.id}">${list || '<p class="hint">Noch leer. Füg Übungen und Pausen hinzu.</p>'}</div>
     <div class="row">
       <a class="btn" href="#/plan/${p.id}/add">${icon.plus}Übung</a>
-      <button class="btn peach" data-act="add-rest" data-plan="${p.id}">${icon.plus}Pause</button>
+      <button class="btn" data-act="add-rest" data-plan="${p.id}">${icon.plus}Pause</button>
     </div>
-    ${dirty ? `<div class="row save-row">
-      <button class="btn ghost" data-act="draft-discard" data-plan="${p.id}">Verwerfen</button>
-      <button class="btn" data-act="draft-save" data-plan="${p.id}">${icon.check}Speichern</button></div>
-    <button class="btn primary big" data-act="save-start" data-plan="${p.id}" ${est.n ? '' : 'disabled'}>${icon.play}Speichern &amp; starten</button>`
-    : `<button class="btn primary big" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'}>${icon.play}Training starten</button>`}`;
+    ${editorBar(p.id, dirty, est.n)}
+    ${planMenu ? planMenuSheet(p, dirty) : ''}
+    ${startAsk === id ? startAskSheet(id) : ''}`;
+}
+
+// Feste Leiste über der Tab-Leiste. Mit Entwurf: Demo-Varianten K3 A/B/C (DEMO(ux-review))
+function editorBar(id, dirty, n) {
+  const dis = n ? '' : 'disabled';
+  if (!dirty) return `<div class="actionbar"><button class="btn primary" data-act="start" data-plan="${id}" ${dis}>${icon.play}Training starten</button></div>`;
+  const saveB = `<button class="btn" data-act="draft-save" data-plan="${id}">Speichern</button>`;
+  const startB = (act) => `<button class="btn primary" data-act="${act}" data-plan="${id}" ${dis}>${icon.play}Starten</button>`;
+  if (demo.k3 === 'b') return `<div class="actionbar three"><button class="btn text danger-text" data-act="draft-discard" data-plan="${id}">Verwerfen</button>${saveB}${startB('start-draft')}</div>`;
+  if (demo.k3 === 'c') return `<div class="actionbar two">${saveB}${startB('start-ask')}</div>`;
+  return `<div class="actionbar two">${saveB}${startB('start-draft')}</div>`;
+}
+
+function planMenuSheet(p, dirty) {
+  return `<div class="sheet-bg" data-act="plan-menu-close"></div>
+    <div class="sheet menu-sheet" role="dialog" aria-label="Weitere Aktionen">
+      <p class="serif">${esc(p.name)}</p>
+      <div class="listbox">
+        <button class="li" data-act="dup-plan" data-plan="${p.id}">${icon.copy}<span>Plan kopieren</span></button>
+        ${dirty ? `<button class="li" data-act="draft-discard" data-plan="${p.id}">${icon.undo}<span>Änderungen verwerfen</span></button>` : ''}
+        <button class="li danger" data-act="del-plan" data-plan="${p.id}">${icon.trash}<span>Plan löschen</span></button>
+      </div>
+      <p class="sheet-hint">Der Verlauf bleibt beim Löschen erhalten.</p>
+      <button class="btn text" data-act="plan-menu-close">Abbrechen</button></div>`;
+}
+
+function startAskSheet(id) {
+  return `<div class="sheet-bg" data-act="start-ask-close"></div>
+    <div class="sheet" role="dialog" aria-label="Änderungen speichern?">
+      <p class="serif">Änderungen speichern?</p>
+      <p class="sheet-hint">Du kannst den Plan auch nur heute so trainieren. Deine Änderungen bleiben dann als Entwurf erhalten.</p>
+      <button class="btn primary big" data-act="save-start" data-plan="${id}">${icon.play}Speichern &amp; starten</button>
+      <button class="btn" data-act="start-draft" data-plan="${id}">Ohne Speichern starten</button>
+      <button class="btn text" data-act="start-ask-close">Abbrechen</button></div>`;
 }
 
 // Einheitliche Zeile: Kreis · Name + Werte · Griff. Antippen klappt die Regler auf.
@@ -379,7 +475,7 @@ function exRow(p, it, group, idx) {
   const open = planOpen === it.id;
   return `<div class="prow ${open ? 'open' : ''}" data-id="${it.id}" data-kind="${group ? 'member' : 'ex'}">
     <div class="prow-main" data-act="ptoggle" role="button" aria-expanded="${open}">${circleFig(ex, 'sm')}
-      <div class="prow-txt"><b>${label}<span>${esc(ex.name)}</span></b><small>${exSummary(it, !!group)}</small></div>${grip}</div>
+      <div class="prow-txt"><b><span>${esc(ex.name)}</span></b><small>${label}${exSummary(it, !!group)}</small></div>${grip}</div>
     ${open ? planFields(it, group ? 'member' : 'ex') : ''}</div>`;
 }
 
@@ -422,8 +518,8 @@ function planFields(it, kind) {
     const last = lastFor(it.exId);
     if (last) h += `<p class="hint">Zuletzt (${fmtDate(last.date)}): ${setsText(last.sets, last.mode)}</p>`;
   }
-  const extra = kind === 'member' ? `<button class="btn ghost small" data-act="punlink">Aus Superset lösen</button>`
-    : kind === 'group' ? `<button class="btn ghost small" data-act="psplit">Superset auflösen</button>` : '';
+  const extra = kind === 'member' ? `<button class="btn text small" data-act="punlink">Aus Superset lösen</button>`
+    : kind === 'group' ? `<button class="btn text small" data-act="psplit">Superset auflösen</button>` : '';
   return `<div class="pfields" data-for="${it.id}">${h}<div class="f-actions">${extra}<button class="btn danger-text small" data-act="premove">Entfernen</button></div></div>`;
 }
 
@@ -450,9 +546,11 @@ function buildSteps(items) {
   return steps;
 }
 
-function startTraining(planId) {
+// useDraft: den Entwurf trainieren, ohne ihn zu speichern (er bleibt als Entwurf erhalten)
+function startTraining(planId, useDraft = false) {
   if (db.active && !confirm('Es läuft bereits ein Training. Verwerfen und neu starten?')) { go('training'); return; }
-  const p = planById(planId);
+  const p = useDraft ? shownPlan(planId) : planById(planId);
+  planMenu = false; startAsk = null;
   const items = JSON.parse(JSON.stringify(p.items));
   db.active = { planId, planName: p.name, startedAt: Date.now(), items, steps: buildSteps(items), idx: 0, log: {}, timer: null, cur: null };
   T.unlockAudio();
@@ -511,24 +609,37 @@ function nextStep() {
 
 // Alle Trainingsseiten (Übung, Autopilot, Vorlauf, Zeit, Superset, Pause, Abschluss) teilen ein Gerüst
 // mit zehn festen Plätzen – nur der Inhalt wechselt, damit nichts springt (Konzept A).
-function trScreen({ hero, title, sub, card1, card2, main, next, nav }) {
+function trScreen({ kind, hero, title, sub, card1, card2, main, next }) {
   const A = db.active;
   const pct = Math.round((Math.min(A.idx, A.steps.length) / A.steps.length) * 100);
-  return `<section class="tr-screen">
+  const prevB = (cls) => `<button class="${cls}" data-act="prev" ${A.idx === 0 ? 'disabled' : ''} aria-label="Zurück">${icon.back}</button>`;
+  const skipL = kind === 'rest' ? 'Pause überspringen' : 'Satz überspringen (wird nicht gespeichert)';
+  const skipB = (cls) => `<button class="${cls}" data-act="skip" ${kind === 'done' ? 'disabled' : ''} aria-label="${skipL}">${icon.chev}</button>`;
+  // DEMO(ux-review) K4: A = Zurück/Weiter im Kopf neben dem Zähler, B = neben der Hauptaktion
+  const pager = demo.k4 === 'a';
+  const counter = `<div class="tr-title"><b>${esc(A.planName)}</b><small>${Math.min(A.idx + 1, A.steps.length)} / ${A.steps.length}</small></div>`;
+  let mainRow, nav = '';
+  if (pager) {
+    mainRow = main;
+    if (kind === 'done') nav = `<div class="tr-nav single"><button class="btn text danger-text" data-act="discard">Verwerfen</button></div>`;
+  } else {
+    const right = kind === 'rest' ? '' : kind === 'done'
+      ? `<button class="icon-btn side danger" data-act="discard" aria-label="Training verwerfen">${icon.trash}</button>` : skipB('icon-btn side');
+    mainRow = `<div class="tr-mainrow ${kind === 'rest' ? 'wide' : ''}">${prevB('icon-btn side')}${main}${right}</div>`;
+  }
+  return `<section class="tr-screen k4-${demo.k4}">
     <header class="tr-top">
       <button class="icon-btn" data-act="exit" aria-label="Training beenden">${icon.del}</button>
-      <div class="tr-title"><b>${esc(A.planName)}</b><small>${Math.min(A.idx + 1, A.steps.length)} / ${A.steps.length}</small></div>
+      ${pager ? `<div class="tr-pager">${prevB('pg')}${counter}${skipB('pg')}</div>` : counter}
       <button class="icon-btn" data-act="sound" aria-label="Ton ${db.sound ? 'aus' : 'an'}schalten">${db.sound ? icon.bell : icon.bellOff}</button>
     </header>
     <div class="progress"><div style="width:${pct}%"></div></div>
     <div class="tr-hero">${hero}</div>
     <h2 class="tr-name">${title}</h2>
     <p class="tr-set">${sub}</p>
-    ${card1}${card2}${main}${next}${nav}</section>`;
+    ${card1}${card2}${mainRow}${next}${nav}</section>`;
 }
-const trNav = (right = `<button class="btn ghost" data-act="skip">Überspringen ›</button>`) => `<div class="tr-nav">
-  <button class="btn ghost" data-act="prev" ${db.active.idx === 0 ? 'disabled' : ''}>‹ Zurück</button>${right}</div>`;
-const trMain = (act, label, ic, soft) => `<button class="btn ${soft ? '' : 'primary'} tr-main" data-act="${act}">${ic}${label}</button>`;
+const trMain = (act, label, ic, soft, after = '') => `<button class="btn ${soft ? '' : 'primary'} tr-main" data-act="${act}">${ic}${label}${after}</button>`;
 
 function viewTraining() {
   const A = db.active;
@@ -537,8 +648,8 @@ function viewTraining() {
   const sheet = exitSheet ? `<div class="sheet-bg" data-act="exit-cancel"></div><div class="sheet">
       <p class="serif">Training beenden?</p>
       <button class="btn primary" data-act="finish">Beenden &amp; speichern</button>
-      <button class="btn danger" data-act="discard">Verwerfen</button>
-      <button class="btn" data-act="exit-cancel">Weiter trainieren</button></div>` : '';
+      <button class="btn" data-act="exit-cancel">Weiter trainieren</button>
+      <button class="btn text danger-text" data-act="discard">Verwerfen</button></div>` : '';
 
   if (!step) return viewSummary() + sheet;
 
@@ -549,9 +660,9 @@ function viewTraining() {
       sub: pickText(PAUSE_LINES, 1, A.steps.slice(0, A.idx).filter((x) => x.k === 'rest').length),
       card1: restCard(),
       card2: nextWeightCard(),
-      main: trMain('skip', 'Pause beenden', icon.chev, true),
+      kind: 'rest',
+      main: trMain('skip', 'Pause beenden', '', true, icon.chev),
       next: nextCard(),
-      nav: trNav(),
     }) + sheet;
   }
 
@@ -565,9 +676,9 @@ function viewTraining() {
     sub: `${setLine} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}`,
     card1: counted ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1),
     card2: stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper'),
+    kind: 'work',
     main: trMain('done', 'Satz erledigt', icon.check),
     next: nextCard(),
-    nav: trNav(),
   }) + sheet;
 }
 
@@ -711,9 +822,9 @@ function viewSummary() {
     sub: `${fmtDur((Date.now() - A.startedAt) / 1000)} · ${done.length} Übung${done.length === 1 ? '' : 'en'} · ${sets.length} Sätze`,
     card1: stat('Sätze', sets.length),
     card2: vol ? stat('Volumen (kg)', fmtNum(vol)) : stat('Zeit unter Spannung', T.fmt(secs)),
+    kind: 'done',
     main: trMain('finish', 'Speichern', icon.check),
     next: `<div class="next-card quote">${quote}</div>`,
-    nav: trNav(`<button class="btn ghost danger-text" data-act="discard">Verwerfen</button>`),
   });
 }
 
@@ -756,16 +867,54 @@ function exerciseStats() {
   return [...m.entries()].filter(([id]) => byId[id]).sort((a, b) => b[1].last - a[1].last);
 }
 
+// Leitwert je Übung für Mini-Trend und Veränderung: Gewicht, sonst Dauer, sonst beste Serie
+function keyMetric(pts) {
+  for (const k of ['maxW', 'maxDur', 'bestReps']) if (pts.some((p) => p[k] != null)) return METRICS.find((m) => m.k === k);
+  return null;
+}
+function spark(vals) {
+  if (vals.length < 2) return '';
+  const lo = Math.min(...vals), hi = Math.max(...vals), W = 48, H = 20;
+  const d = vals.map((v, i) => `${i ? 'L' : 'M'}${(1 + (i / (vals.length - 1)) * (W - 2)).toFixed(1)},${(H - 2 - ((v - lo) / (hi - lo || 1)) * (H - 4)).toFixed(1)}`).join('');
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+let showAllEx = false;
 function viewHistory() {
   const sessions = [...db.history].sort((a, b) => b.date - a.date);
+  if (!sessions.length) return header('Verlauf') + empty('Kraft ist mehr als Optik.', 'Nach deinem ersten gespeicherten Training siehst du hier deinen Fortschritt.',
+    `<a class="btn primary" href="#/plaene">Zu deinen Plänen</a>`);
+  // Überblick: diese Woche (ab Montag) und dieser Monat – bewusst ohne Serie (kein Druck)
+  const now = new Date(), wk = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7)).getTime();
+  const mo = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const nWeek = sessions.filter((x) => x.date >= wk).length, nMonth = sessions.filter((x) => x.date >= mo).length;
   const stats = exerciseStats();
+  const shown = showAllEx ? stats : stats.slice(0, 5);
+  const exRows = shown.map(([id, st]) => {
+    const pts = seriesFor(id), m = keyMetric(pts);
+    const vals = m ? pts.filter((p) => p[m.k] != null).slice(-6).map((p) => p[m.k]) : [];
+    const diff = vals.length > 1 ? vals[vals.length - 1] - vals[0] : 0;
+    const best = vals.length ? Math.max(...vals) : null;
+    return lrow({ attrs: `href="#/fortschritt/${id}"`, ic: circleFig(byId[id]), title: esc(byId[id].name),
+      sub: `${st.n}×${best != null ? ` · max. ${fmtNum(best)} ${m.unit}` : ''}`,
+      right: `<span class="trend">${spark(vals)}<span class="delta">${diff ? `${diff > 0 ? '+' : '−'}${fmtNum(Math.abs(diff))} ${m.unit}` : '±0'}</span></span>` });
+  }).join('');
+  // Trainings nach Monat gruppiert
+  const months = [];
+  for (const x of sessions) {
+    const d = new Date(x.date), key = d.getFullYear() * 12 + d.getMonth();
+    if (months[months.length - 1]?.key !== key) months.push({ key, d, items: [] });
+    months[months.length - 1].items.push(x);
+  }
+  const mName = (d) => d.toLocaleDateString('de-DE', d.getFullYear() === now.getFullYear() ? { month: 'long' } : { month: 'long', year: 'numeric' });
   return header('Verlauf') + `
-    ${!sessions.length ? empty('Kraft ist mehr als Optik.', 'Nach deinem ersten gespeicherten Training siehst du hier deinen Fortschritt.',
-      `<a class="btn primary" href="#/plaene">Zu deinen Plänen</a>`) : `
+    <div class="sumrow"><div><b>${nWeek}</b><small>diese Woche</small></div><div><b>${nMonth}</b><small>im ${now.toLocaleDateString('de-DE', { month: 'long' })}</small></div></div>
     ${pill('Fortschritt je Übung')}
-    <div class="list-links">${stats.map(([id, s]) => `<a href="#/fortschritt/${id}"><span>${esc(byId[id].name)}</span><small>${s.n}× · ${fmtDate(s.last)}</small></a>`).join('')}</div>
+    <div class="lgroup">${exRows}</div>
+    ${stats.length > 5 ? `<button class="link more-link" data-act="all-ex">${showAllEx ? 'Weniger anzeigen' : more(`Alle ${stats.length} Übungen`)}</button>` : ''}
     ${pill('Trainings')}
-    <div class="list-links">${sessions.map((s) => `<a href="#/verlauf/${s.id}" class="with-ic">${planIconHTML(s.planName, s.items, 'xs')}<span>${esc(s.planName)}</span><small>${fmtDate(s.date, { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</small></a>`).join('')}</div>`}`;
+    ${months.map((g) => `<p class="month">${mName(g.d)}</p><div class="lgroup">${g.items.map((x) => lrow({ attrs: `href="#/verlauf/${x.id}"`,
+      ic: planIconHTML(x.planName, x.items), title: esc(x.planName),
+      sub: `${fmtDate(x.date, { weekday: 'short', day: '2-digit', month: '2-digit' })} · ${fmtDur((x.end - x.date) / 1000)}` })).join('')}</div>`).join('')}`;
 }
 
 // ── Einstellungen ─────────────────────────────────────────
@@ -788,40 +937,35 @@ function viewTempo() {
     <p class="hint">Gilt z. B. beim Wechsel im Superset oder am Trainingsbeginn. Nach einer Pause geht es direkt los – die endet schon mit 3-2-1.</p>
     ${pill('Sekunden pro Wiederholung')}
     <div class="plist">${EXERCISES.map(row).join('')}</div>
-    ${custom ? `<button class="btn ghost big" data-act="tempo-reset">Alle auf Schätzung zurücksetzen</button>` : ''}`;
+    ${custom ? `<button class="btn text big" data-act="tempo-reset">Alle auf Schätzung zurücksetzen</button>` : ''}`;
 }
 
-const DESIGNS = [
-  { id: 'flow', name: 'flow.training', note: 'Creme, Salbei & Rosé', sw: ['#F3F0EB', '#9DAA96', '#D4A19C', '#3F6B5C'] },
-  { id: 'classic', name: 'Klassisch', note: 'Das ursprüngliche Design', sw: ['#F4F2EE', '#EBE8E2', '#1C7C74', '#E8590C'] },
-];
 
 function viewSettings() {
   const theme = db.theme || 'system', design = db.design || 'flow';
+  const sw = (act, on, label) => `<input type="checkbox" role="switch" class="switch" data-act="${act}" ${on ? 'checked' : ''} aria-label="${label}">`;
   return header('Einstellungen') + `
-    ${pill('Design')}
+    ${pill('Aussehen')}
     <div class="design-opts" role="radiogroup" aria-label="Design">${DESIGNS.map((d) => `
       <button class="design-opt ${design === d.id ? 'on' : ''}" data-act="design" data-design="${d.id}" role="radio" aria-checked="${design === d.id}">
         <span class="sw">${d.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>
-        <b class="sample-${d.id}">${d.name}</b><small>${d.note}</small></button>`).join('')}</div>
-    ${pill('Erscheinungsbild')}
-    <div class="setting"><div class="seg" role="radiogroup" aria-label="Erscheinungsbild">${[['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) =>
-      `<button class="${theme === k ? 'on' : ''}" data-act="theme" data-theme="${k}" role="radio" aria-checked="${theme === k}">${l}</button>`).join('')}</div></div>
+        ${d.proposal ? '<span class="prop-tag">Neu</span>' : ''}<b>${d.name}</b><small>${d.note}</small></button>`).join('')}</div>
+    <div class="seg seg3" role="radiogroup" aria-label="Erscheinungsbild">${[['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) =>
+      `<button class="${theme === k ? 'on' : ''}" data-act="theme" data-theme="${k}" role="radio" aria-checked="${theme === k}">${l}</button>`).join('')}</div>
     ${pill('Training')}
-    <div class="stack">
-      <label class="setting toggle"><span>Ton beim Timer</span><input type="checkbox" data-act="sound-cb" ${db.sound ? 'checked' : ''}></label>
-      <label class="setting toggle"><span>Autopilot<small>Auch Wiederholungen zählen herunter und es geht automatisch weiter.</small></span>
-        <input type="checkbox" data-act="autopilot-cb" ${db.autopilot ? 'checked' : ''}></label>
-      <a class="row-link" href="#/einstellungen/zeiten"><span>Zeiten für den Autopilot</span><span class="more">${fmtNum(db.setup ?? 5)} s Vorlauf</span></a>
+    <div class="listbox">
+      <label class="li"><span>Ton beim Timer</span>${sw('sound-cb', db.sound, 'Ton beim Timer')}</label>
+      <label class="li"><span>Autopilot<small>Auch Wiederholungen zählen herunter und es geht automatisch weiter.</small></span>${sw('autopilot-cb', db.autopilot, 'Autopilot')}</label>
+      <a class="li indent ${db.autopilot ? '' : 'off'}" href="#/einstellungen/zeiten"><span>Zeiten für den Autopilot</span><small class="val">${fmtNum(db.setup ?? 5)} s Vorlauf</small>${icon.chev}</a>
     </div>
     ${pill('Daten')}
-    <div class="stack">
-      <button class="btn" data-act="export">Daten exportieren (JSON)</button>
-      <label class="btn ghost">Daten importieren<input type="file" accept="application/json,.json" id="import" hidden></label>
-      <p class="hint">Deine Daten liegen nur auf diesem Gerät. Exportier sie ab und zu, dann gehen sie nicht verloren.</p>
+    <div class="listbox">
+      <button class="li" data-act="export"><span>Daten exportieren</span>${icon.chev}</button>
+      <label class="li"><span>Daten importieren</span>${icon.chev}<input type="file" accept="application/json,.json" id="import" hidden></label>
     </div>
+    <p class="hint below">Deine Daten liegen nur auf diesem Gerät. Exportier sie ab und zu, dann gehen sie nicht verloren.</p>
     <div class="about">${LOGO}<div class="ver">flow.training ${esc(self.APP_VERSION || '')}</div>
-      <button class="btn ghost small" data-act="check-update">Nach Update suchen</button>
+      <button class="link" data-act="check-update">Nach Update suchen</button>
       <a href="https://github.com/cyberbomme/flow-training" target="_blank" rel="noopener">Quellcode auf GitHub</a></div>`;
 }
 
@@ -830,9 +974,9 @@ function viewSession(id) {
   if (!s) return header('Training', ['#/verlauf', 'Verlauf']) + empty('Dieses Training gibt es nicht (mehr).');
   return header(s.planName, ['#/verlauf', 'Verlauf']) + `
     <p class="sub">${fmtDate(s.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${new Date(s.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} · ${fmtDur((s.end - s.date) / 1000)}</p>
-    <ul class="list">${s.items.map((it) => `<li><a href="#/fortschritt/${it.exId}">${byId[it.exId] ? circleFig(byId[it.exId], 'sm') : ''}
-      <div><b>${it.ss ? `<span class="tag-l">${it.ss}</span> ` : ''}${esc(byId[it.exId]?.name || it.exId)}</b><small>${setsText(it.sets, it.mode)}</small></div></a></li>`).join('')}</ul>
-    <button class="btn danger-text" data-act="del-session" data-id="${s.id}">Training löschen</button>`;
+    <div class="lgroup">${s.items.map((it) => lrow({ attrs: `href="#/fortschritt/${it.exId}"`, ic: byId[it.exId] ? circleFig(byId[it.exId]) : '',
+      title: esc(byId[it.exId]?.name || it.exId), sub: (it.ss ? `<span class="tag-l">${it.ss}</span> ` : '') + setsText(it.sets, it.mode) })).join('')}</div>
+    <button class="btn text danger-text" data-act="del-session" data-id="${s.id}">Training löschen</button>`;
 }
 
 const METRICS = [
@@ -871,14 +1015,13 @@ function viewProgress(exId) {
   const pts = seriesFor(exId);
   const avail = METRICS.filter((m) => pts.some((p) => p[m.k] != null));
   if (!avail.find((m) => m.k === metricSel)) metricSel = avail[0]?.k;
-  return header(ex.name, ['#/verlauf', 'Verlauf']) + `<p class="overline">Fortschritt</p>
+  const m = METRICS.find((x) => x.k === metricSel);
+  return header(ex.name, ['#/verlauf', 'Verlauf'], `<a class="head-link" href="#/uebung/${ex.id}">${more('Übung')}</a>`) + `
     ${pts.length ? `
-    <div class="chips">${avail.map((m) => `<button class="chip ${m.k === metricSel ? 'on' : ''}" data-act="metric" data-k="${m.k}">${m.label}</button>`).join('')}</div>
+    <div class="chips scroll">${avail.map((x) => `<button class="chip ${x.k === metricSel ? 'on' : ''}" data-act="metric" data-k="${x.k}" aria-pressed="${x.k === metricSel}">${x.label}</button>`).join('')}</div>
     <div id="chart" class="chart" data-ex="${exId}"></div>
-    <table class="tbl"><thead><tr><th>Datum</th><th>${METRICS.find((m) => m.k === metricSel).label}</th><th>Sätze</th></tr></thead><tbody>
-    ${[...pts].reverse().map((p) => `<tr><td>${fmtDate(p.date)}</td><td>${p[metricSel] != null ? fmtNum(p[metricSel]) : '–'}</td><td>${p.text}</td></tr>`).join('')}
-    </tbody></table>` : empty('Noch keine Daten zu dieser Übung.')}
-    <a class="row-link" href="#/uebung/${ex.id}"><span>Zur Übung</span><span class="more">Ansehen</span></a>`;
+    <div class="listbox">${[...pts].reverse().map((p) => `<a class="li" href="#/verlauf/${p.sid}"><span>${fmtDate(p.date)}<small>${p.text}</small></span>
+      <b class="big-val">${p[metricSel] != null ? fmtNum(p[metricSel]) : '–'}<i> ${m.unit}</i></b></a>`).join('')}</div>` : empty('Noch keine Daten zu dieser Übung.')}`;
 }
 
 function niceTicks(lo, hi, n = 4) {
@@ -954,11 +1097,18 @@ document.addEventListener('click', (ev) => {
     }
     case 'equip-sheet': equipSheet = true; render(); break;
     case 'equip-sheet-close': equipSheet = false; render(); break;
-    case 'muscle':
-      db.muscle = btn.dataset.id; save();
-      btn.parentElement.querySelectorAll('[data-act=muscle]').forEach((c) => { const on = c === btn; c.classList.toggle('on', on); c.setAttribute('aria-checked', on); });
+    case 'muscle': {
+      // Mehrfachauswahl: Gruppen an-/abwählen, „Alle“ hebt die Auswahl auf
+      const id = btn.dataset.id;
+      db.muscles = !id ? [] : db.muscles.includes(id) ? db.muscles.filter((x) => x !== id) : [...db.muscles, id];
+      save();
+      btn.parentElement.querySelectorAll('[data-act=muscle]').forEach((c) => {
+        const on = c.dataset.id ? db.muscles.includes(c.dataset.id) : !db.muscles.length;
+        c.classList.toggle('on', on); c.setAttribute('aria-pressed', on);
+      });
       renderCatalogList(route()[2] === 'add' ? route()[1] : null);
       break;
+    }
     case 'equip-all':
       db.equip = db.equip.length === EQUIPMENT.length ? [] : EQUIPMENT.map((e) => e.id); save(); render(); break;
     case 'pick': {
@@ -986,13 +1136,21 @@ document.addEventListener('click', (ev) => {
       break;
     }
     case 'tpl-toggle': showTpl = !(showTpl ?? !db.plans.length); render(); break;
+    case 'tpl-open': tplSheet = btn.dataset.tpl; render(); break;
+    case 'tpl-close': tplSheet = null; render(); break;
+    case 'plan-menu': planMenu = true; render(); break;
+    case 'plan-menu-close': planMenu = false; render(); break;
+    case 'hint-off': db.hints = { ...(db.hints || {}), drag: true }; save(); render(); break;
+    case 'start-draft': startTraining(btn.dataset.plan, true); break;
+    case 'start-ask': startAsk = btn.dataset.plan; render(); break;
+    case 'start-ask-close': startAsk = null; render(); break;
     case 'tpl-add': {
       const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
       const items = JSON.parse(JSON.stringify(t.items));
       PE.reId(items, uid);
       const n = db.plans.filter((p) => p.tpl === t.id).length;
       db.plans.push({ id: uid(), tpl: t.id, name: n ? `${t.name} (${n + 1})` : t.name, items });
-      showTpl = true; // offen lassen, falls weitere Vorlagen übernommen werden sollen
+      showTpl = true; tplSheet = null; // offen lassen, falls weitere Vorlagen übernommen werden sollen
       save(); toast(`„${t.name}“ ist jetzt in deinen Plänen`); render();
       break;
     }
@@ -1002,15 +1160,17 @@ document.addEventListener('click', (ev) => {
       break;
     }
     case 'dup-plan': {
-      const src = planById(btn.dataset.plan);
-      const p = JSON.parse(JSON.stringify(src));
-      p.id = uid(); p.name = src.name + ' (Kopie)'; PE.reId(p.items, uid);
-      db.plans.splice(db.plans.indexOf(src) + 1, 0, p); save(); render();
+      // Kopiert, was im Editor zu sehen ist (inkl. Entwurf), und öffnet die Kopie
+      const src = planById(btn.dataset.plan), shown = shownPlan(src.id);
+      const p = JSON.parse(JSON.stringify({ ...shown, tpl: src.tpl }));
+      p.id = uid(); p.name = shown.name + ' (Kopie)'; PE.reId(p.items, uid);
+      db.plans.splice(db.plans.indexOf(src) + 1, 0, p); planMenu = false; save();
+      toast('Kopie angelegt'); go('plan/' + p.id);
       break;
     }
     case 'del-plan': {
       const p = planById(btn.dataset.plan);
-      if (confirm(`Plan „${p.name}“ löschen? Der Verlauf bleibt erhalten.`)) { db.plans = db.plans.filter((x) => x !== p); if (db.drafts) delete db.drafts[p.id]; save(); render(); }
+      if (confirm(`Plan „${p.name}“ löschen? Der Verlauf bleibt erhalten.`)) { db.plans = db.plans.filter((x) => x !== p); if (db.drafts) delete db.drafts[p.id]; planMenu = false; save(); go('plaene'); }
       break;
     }
     case 'add-rest': {
@@ -1045,7 +1205,7 @@ document.addEventListener('click', (ev) => {
     case 'save-start': commitDraft(btn.dataset.plan); save(); toast('Plan gespeichert'); startTraining(btn.dataset.plan); break;
     case 'draft-save': commitDraft(btn.dataset.plan); save(); toast('Plan gespeichert'); render(); break;
     case 'draft-discard':
-      if (confirm('Änderungen an diesem Plan verwerfen?')) { delete db.drafts[btn.dataset.plan]; planOpen = null; save(); render(); }
+      if (confirm('Änderungen an diesem Plan verwerfen?')) { delete db.drafts[btn.dataset.plan]; planOpen = null; planMenu = false; save(); render(); }
       break;
 
     // Training
@@ -1093,6 +1253,14 @@ document.addEventListener('click', (ev) => {
 
     // Verlauf
     case 'metric': metricSel = btn.dataset.k; render(); break;
+    case 'demo-open': demoSheet = true; renderDemo(); break;
+    case 'demo-close': demoSheet = false; renderDemo(); break;
+    case 'demo-set': {
+      const { k, v } = btn.dataset;
+      if (k === 'design' || k === 'theme') { db[k] = v; save(); applyTheme(); } else { demo[k] = v; saveDemo(); }
+      render(); break;
+    }
+    case 'all-ex': showAllEx = !showAllEx; render(); break;
     case 'theme': db.theme = btn.dataset.theme; save(); applyTheme(); render(); break;
     case 'design': db.design = btn.dataset.design; save(); applyTheme(); render(); break;
     case 'tempo': {
@@ -1148,7 +1316,7 @@ document.addEventListener('change', (ev) => {
   } else if (t.dataset.act === 'sound-cb') {
     db.sound = t.checked; T.setSound(db.sound); save();
   } else if (t.dataset.act === 'autopilot-cb') {
-    db.autopilot = t.checked; save();
+    db.autopilot = t.checked; save(); render();
     toast(db.autopilot ? 'Autopilot an – gilt ab dem nächsten Satz' : 'Autopilot aus');
   } else if (t.id === 'import' && t.files[0]) {
     t.files[0].text().then((txt) => {

@@ -7,13 +7,27 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 **Aussehen, Komponenten und Texte richten sich nach [`docs/DESIGN.md`](docs/DESIGN.md).** Kurz:
 - Tokens als CSS-Variablen in `app.css` (`--color-*`). Dunkelmodus ist daraus abgeleitet (gleiche Farbfamilien),
   Umschaltung Hell/Dunkel/System über `data-theme` auf `<html>`.
-- Zweites Design „Klassisch“ (ursprüngliches orange Design) über `data-design="classic"`: setzt nur dieselben Tokens neu.
-  Komponenten-CSS nutzt ausschließlich Tokens, damit beide Designs funktionieren. Wahl unter *Einstellungen*.
+- Weitere Designs über `data-design="…"` (Liste `DESIGNS` in `js/app.js`): gleiche Schriften, Formen und Regeln,
+  nur andere Farbfamilien – jedes setzt nur dieselben Tokens neu, hell und dunkel, Kontraste nach WCAG AA geprüft.
+  Komponenten-CSS nutzt ausschließlich Tokens. Wahl unter *Einstellungen*. „Klassisch“ wurde entfernt (2026-11-18).
 - Schriften lokal in `fonts/` (Oswald = Display/Zahlen, Gilda Display = Emotion, Montserrat = Body). Keine Google-CDN-Einbindung.
 - Text in Salbei/Rosé nur dekorativ oder als große Headline; Buttons/Links in `forest`. Fehler/Löschen in `--color-rose-ink`.
 - Offene Punkte aus DESIGN.md §11 sind als `TODO(Design)` im Code markiert (Brand-Farben, Logo-SVG, Fotos, Schriftlizenz).
 - Microcopy: Du-Ansprache, ruhig, bestärkend; bei Gesundheit vorsichtig formulieren. Keine Emojis in UI-Elementen.
 - Motivationstexte zentral in `js/texts.js` (Leitsätze der Marke unverändert in `BRAND`). Längengrenzen je Platz stehen dort; je Training gemischt, ohne Wiederholung.
+
+## Baukasten (ein Stil pro Aufgabe, gilt für jeden neuen Screen)
+- **Abschnitt:** immer `pill()` (PillLabel). Die Versal-Zeile (`.overline`) nur als Dachzeile über einem Titel.
+- **Mehr / weiter:** Text + Chevron-Icon (`more()`), überall gleich. Keine Zeichen wie ›, ››› oder ».
+- **Zurück:** immer das Icon `icon.back`, auch im Training.
+- **Knöpfe, drei Stufen:** `.btn.primary` = Hauptaktion (eine pro Screen), `.btn` = Fläche (Nebenaktion), `.btn.text` = selten.
+  Löschen/Entfernen/Verwerfen immer in `--color-rose-ink` (`.danger-text`, im Menü `.li.danger`).
+- **An / aus:** Schalter (`input.switch` mit `role="switch"`), keine Kästchen.
+- **Listenzeile:** `lrow()` – Kreis-Icon · Titel · eine Unterzeile · rechts ein Element (Chevron, Griff, Play oder Wert).
+  Gruppierte Liste (Einstellungen, Sheets): `.listbox` mit `.li`.
+- Plan-Editor: „···“ oben rechts bleibt immer (Kopieren, Verwerfen, Löschen), wird nie durch „Speichern“ ersetzt.
+  Feste Aktionsleiste unten; mit Entwurf gibt es auch „Starten“ ohne Speichern (Entwurf bleibt).
+- Katalog: eine wischbare Filterzeile (Ausrüstung als Sheet, Muskelgruppen mit Mehrfachauswahl in `db.muscles`).
 
 ## Arbeitsweise
 - Neue Übungen in `js/exercises.js`; Figuren danach per Playwright-Screenshot prüfen (`~/pw-venv`).
@@ -43,6 +57,12 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   Karte 1 · Karte 2 · Hauptaktion · Als Nächstes · Navigation – feste Höhen, nur der Inhalt wechselt. Neue Seitentypen nur über dieses Gerüst.
 - Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden“.
 - Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
+
+## Branch ux-review – vor dem Merge nach main entfernen
+- `js/demo-seed.js` (erfundener Verlauf) samt Import in `app.js` und Eintrag in `sw.js`; erfundene Einträge tragen `demo: true`.
+- Varianten-Schalter (`DEMO_OPTS`, `renderDemo`, `.demo-*`, `data-sec`): nur die gewählte Variante behalten.
+- Nicht gewählte Design-Vorschläge aus `DESIGNS` und `app.css` streichen; alles mit `DEMO(ux-review)` markiert.
+- Version hochzählen, ungenutztes CSS (`.ilist`, `.plan`, `.tbl`, `.setting`) aufräumen.
 
 ## Backlog
 - **Zyklusphase als Plan-Parameter** (Wunsch 2026-11-18, noch nicht gebaut):
