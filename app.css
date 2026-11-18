@@ -455,3 +455,17 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 .sheet-row b { display: block; font-weight: 600; }
 .sheet-row small { font-size: 13px; }
 .sheet-row svg { width: 20px; height: 20px; color: var(--color-forest); flex: none; stroke-width: 1.8; }
+
+/* ── Plan-Icons ──────────────────────────────── */
+.plan-ic { color: var(--color-forest); }
+.plan-ic > svg { width: 26px; height: 26px; stroke-width: 1.5; }
+.plan-ic.rose { color: var(--color-rose-ink); }
+.ic-circle.xs { width: 28px; height: 28px; }
+.ic-circle.xs > svg { width: 16px; height: 16px; }
+.plan-main { display: flex; align-items: center; gap: 14px; }
+.plan-txt { flex: 1; min-width: 0; }
+.plan-sub { display: flex; align-items: center; gap: 10px; }
+.list-links a.with-ic { justify-content: flex-start; }
+.list-links a.with-ic > span { flex: 1; min-width: 0; }
+.sheet-row .ic-circle { flex: none; }
+.sheet-row > span { flex: 1; min-width: 0; }

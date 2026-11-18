@@ -15,6 +15,7 @@ function defaults() {
     autopilot: false,
     setup: 5,        // Vorlauf in s vor automatisch gestarteten Sätzen ohne Pause davor
     tempo: {},
+    muscle: '',      // Muskelgruppen-Filter im Katalog ('' = alle)
     drafts: {},      // ungespeicherte Plan-Änderungen je Plan-ID       // eigene Tempi je Übung (s pro Wiederholung), überschreibt TEMPO
     plans: [samplePlan()],
     history: [],

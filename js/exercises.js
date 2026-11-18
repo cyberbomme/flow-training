@@ -247,3 +247,16 @@ export const TEMPO = {
   'kniebeuge-lh': 4, kreuzheben: 4.5, 'bankdruecken-lh': 3.5, 'rudern-lh': 3,
   'kb-swing': 2, 'band-rudern': 2.5, 'band-brustpresse': 2.5,
 };
+
+// Muskelgruppen für Filter und Plan-Icons – automatisch aus der Muskel-Beschreibung abgeleitet,
+// damit neue Übungen ohne Zusatzangabe einsortiert werden.
+export const MUSCLE_GROUPS = [
+  { id: 'beine', name: 'Beine', match: /oberschenkel|hüftbeuger|wade/i },
+  { id: 'gesaess', name: 'Gesäß', match: /gesäß/i },
+  { id: 'brust', name: 'Brust', match: /brust/i },
+  { id: 'ruecken', name: 'Rücken', match: /rücken/i },
+  { id: 'schultern', name: 'Schultern', match: /schulter/i },
+  { id: 'arme', name: 'Arme', match: /bizeps|trizeps|unterarm/i },
+  { id: 'rumpf', name: 'Rumpf', match: /rumpf|bauch/i },
+];
+for (const e of EXERCISES) e.groups = MUSCLE_GROUPS.filter((g) => g.match.test(e.muscles)).map((g) => g.id);
