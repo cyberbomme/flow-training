@@ -17,7 +17,7 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 ## Arbeitsweise
 - Neue Übungen in `js/exercises.js`; Figuren danach per Playwright-Screenshot prüfen (`~/pw-venv`).
 - Version steht nur in `js/version.js` (Anzeige in *Einstellungen*, Cache-Name im Service Worker). Bei jedem Deploy hochzählen.
-- Bei neuen Dateien `sw.js` → `SHELL` ergänzen.
+- Bei neuen Dateien `sw.js` → `SHELL` ergänzen. SW-Strategie: Netz zuerst (3 s), sonst Cache; neue Version lädt die App sofort neu.
 - localStorage-Schlüssel `kraftkatalog.v1` nicht umbenennen (bestehende Daten auf dem iPhone).
 
 ## Pläne & Supersets
