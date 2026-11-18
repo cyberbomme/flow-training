@@ -280,8 +280,16 @@ body[data-view="training"] { padding-bottom: calc(env(safe-area-inset-bottom) + 
 .progress { height: 3px; background: var(--color-line); border-radius: 2px; margin: 14px 0 20px; overflow: hidden; }
 .progress div { height: 100%; background: var(--color-forest); transition: width .3s; }
 .tr-step { text-align: center; }
-.fig-tr { --fig-bg: var(--color-sage-light); width: min(60vw, 250px); aspect-ratio: 1; margin: 0 auto; background: var(--fig-bg); border-radius: 50%; overflow: hidden; }
-.fig-tr .fig { padding: 12%; }
+.fig-tr { --fig-bg: var(--color-sage-light); position: relative; width: min(60vw, 250px); aspect-ratio: 1; margin: 0 auto; background: var(--fig-bg); border-radius: 50%; overflow: hidden; }
+.fig-anim { position: absolute; inset: 0; }
+.fig-tr .fig { padding: 15%; }
+/* Countdown-Ring innen am Kreisrand – gleiche Außenmaße wie ohne Ring */
+.fig-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+.fig-ring .ring-bg { stroke: var(--color-surface); stroke-width: 5; }
+.fig-ring .ring { stroke-width: 5; }
+.timer-card .t-val { width: 76px; text-align: center; font: 600 32px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.timer-card .stepper button svg { width: 18px; height: 18px; stroke-width: 1.8; }
+.timer-card .stepper .t-go { background: var(--color-forest); color: var(--color-on-forest); }
 .tr-name { font: 600 30px/1.15 var(--font-display); text-transform: var(--display-case); letter-spacing: var(--display-track); margin: 20px 0 4px; }
 .tr-set { color: var(--color-text-muted); margin: 0 0 20px; }
 .stepper-wrap { display: flex; align-items: center; justify-content: space-between; background: var(--color-surface); border-radius: var(--r-card); padding: 8px 8px 8px 20px; margin-top: 10px; text-align: left; }
@@ -289,6 +297,8 @@ body[data-view="training"] { padding-bottom: calc(env(safe-area-inset-bottom) + 
 .stepper { display: flex; align-items: center; gap: 4px; }
 .stepper button { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--color-fill); color: var(--color-text); font: 400 24px/1 var(--font-body); cursor: pointer; }
 .stepper input { width: 76px; height: 48px; text-align: center; font: 600 32px/normal var(--font-display); border: 0; background: none; color: var(--color-text); padding: 0; }
+/* leeres Feld: Platzhalter in Textgröße, damit er mittig sitzt */
+.stepper input:placeholder-shown { font: 500 14px/normal var(--font-body); }
 .stepper input::placeholder { font: 500 14px var(--font-body); color: var(--color-text-muted); }
 
 .timer { position: relative; width: min(64vw, 248px); aspect-ratio: 1; margin: 4px auto 16px; }

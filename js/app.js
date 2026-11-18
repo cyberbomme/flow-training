@@ -440,10 +440,10 @@ function viewTraining() {
     ? `<p class="next">Danach direkt: <b>${nx.ss} ${esc(byId[itemOf(nx).exId].name)}</b></p>` : '';
   const setLine = step.ss ? `<span class="tag-l">${step.ss}</span> Superset · Runde ${step.set + 1} von ${step.of}` : `Satz ${step.set + 1} von ${it.sets}`;
   return top + `<section class="tr-step">
-    <div class="fig-tr" data-anim="${ex.id}"></div>
+    <div class="fig-tr ${it.mode === 'time' ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${it.mode === 'time' ? figRing() : ''}</div>
     <h2 class="tr-name">${esc(ex.name)}</h2>
     <p class="tr-set">${setLine} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}</p>
-    ${it.mode === 'time' ? timerBlock(false) : stepper('reps', 'Wiederholungen', A.cur.reps, 1)}
+    ${it.mode === 'time' ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1)}
     ${stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper')}
     <button class="btn primary big" data-act="done">${icon.check}Satz erledigt</button>
     ${ssNext}
@@ -455,6 +455,21 @@ function stepper(key, label, val, step, ph = '') {
     <button data-act="stp" data-d="${-step}" aria-label="weniger">−</button>
     <input type="text" inputmode="decimal" value="${fmtNum(val)}" placeholder="${ph}" data-cur="${key}">
     <button data-act="stp" data-d="${step}" aria-label="mehr">+</button></div></div>`;
+}
+
+// Zeit-Übung: Countdown-Ring liegt auf dem Figur-Kreis, die Bedienung sitzt im Regler-Platz
+// der Wiederholungs-Übungen – so bleibt der Bildaufbau bei beiden Übungsarten identisch.
+function figRing() {
+  const t = db.active.timer;
+  return `<svg class="fig-ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="57.5"/>
+    <circle class="ring" cx="60" cy="60" r="57.5" pathLength="100" stroke-dasharray="100" stroke-dashoffset="${100 - (T.remaining(t) / t.total) * 100}"/></svg>`;
+}
+function timerCard() {
+  const t = db.active.timer;
+  return `<div class="stepper-wrap timer-card"><span>Zeit</span><div class="stepper">
+    <button data-act="t-stop" aria-label="Stop – Zeit zurücksetzen">${icon.stop}</button>
+    <output class="t-val" id="tdisp" aria-live="off">${T.fmt(T.remaining(t))}</output>
+    <button class="t-go" data-act="t-toggle" id="t-toggle" aria-label="${t.running ? 'Pause' : 'Start'}">${t.running ? icon.pause : icon.play}</button></div></div>`;
 }
 
 function timerBlock(isRest) {
@@ -482,11 +497,16 @@ function startTicker() {
     const t = A.timer;
     if (!t || db.active !== A) return;
     const r = T.remaining(t);
-    const d = $('#tdisp'), ring = $('.timer .ring');
+    const d = $('#tdisp'), ring = $('.timer .ring, .fig-ring .ring');
     if (d) d.textContent = T.fmt(r);
     if (ring) ring.setAttribute('stroke-dashoffset', 100 - (r / t.total) * 100);
     $('#t-start')?.toggleAttribute('disabled', t.running);
     $('#t-pause')?.toggleAttribute('disabled', !t.running);
+    const tg = $('#t-toggle');
+    if (tg && tg.dataset.running !== String(t.running)) {
+      tg.dataset.running = t.running; tg.innerHTML = t.running ? icon.pause : icon.play;
+      tg.setAttribute('aria-label', t.running ? 'Pause' : 'Start');
+    }
     if (!t.running) return;
     const sec = Math.ceil(r);
     if (sec <= 3 && sec > 0 && sec !== lastBeep) { lastBeep = sec; T.beep('tick'); }
@@ -818,6 +838,10 @@ document.addEventListener('click', (ev) => {
     case 'prev': if (A.idx > 0) { A.idx--; enterStep(false); render(); } break;
     case 't-start': T.unlockAudio(); T.start(A.timer); T.beep('start'); save(); break;
     case 't-pause': T.pause(A.timer); save(); break;
+    case 't-toggle':
+      if (A.timer.running) T.pause(A.timer);
+      else { T.unlockAudio(); T.start(A.timer); T.beep('start'); }
+      save(); break;
     case 't-stop': T.reset(A.timer); lastBeep = null; save(); render(); break;
     case 't-add': T.addTime(A.timer, +btn.dataset.s); save(); break;
     case 'sound': db.sound = !db.sound; T.setSound(db.sound); save(); render(); break;
