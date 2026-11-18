@@ -12,6 +12,7 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   Komponenten-CSS nutzt ausschließlich Tokens. Wahl unter *Einstellungen*. „Klassisch“ wurde entfernt (2026-11-18).
 - Schriften lokal in `fonts/` (Oswald = Display/Zahlen, Gilda Display = Emotion, Montserrat = Body). Keine Google-CDN-Einbindung.
 - Text in Salbei/Rosé nur dekorativ oder als große Headline; Buttons/Links in `forest`. Fehler/Löschen in `--color-rose-ink`.
+- Logo: `js/logo.js` (aus der Vorlage vektorisiert), Farbe `--color-sage` über currentColor; App-Icon `icons/` = Entwurf A (Creme + Salbei).
 - Offene Punkte aus DESIGN.md §11 sind als `TODO(Design)` im Code markiert (Brand-Farben, Logo-SVG, Fotos, Schriftlizenz).
 - Microcopy: Du-Ansprache, ruhig, bestärkend; bei Gesundheit vorsichtig formulieren. Keine Emojis in UI-Elementen.
 - Motivationstexte zentral in `js/texts.js` (Leitsätze der Marke unverändert in `BRAND`). Längengrenzen je Platz stehen dort; je Training gemischt, ohne Wiederholung.
@@ -27,6 +28,8 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   Gruppierte Liste (Einstellungen, Sheets): `.listbox` mit `.li`.
 - Plan-Editor: „···“ oben rechts bleibt immer (Kopieren, Verwerfen, Löschen), wird nie durch „Speichern“ ersetzt.
   Feste Aktionsleiste unten; mit Entwurf gibt es auch „Starten“ ohne Speichern (Entwurf bleibt).
+- Tab-Leiste: Pläne · Übungen · Verlauf · Einstellungen; Start-Seite sind die Pläne.
+- Übungen hinzufügen: Mehrfachauswahl, unten „Hinzufügen (n)“.
 - Katalog: eine wischbare Filterzeile (Ausrüstung als Sheet, Muskelgruppen mit Mehrfachauswahl in `db.muscles`).
 
 ## Arbeitsweise
@@ -54,14 +57,14 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Tempo ist die eine Quelle für Animation, Autopilot und Plandauer: 1 Animationszyklus = 1 Wiederholung; mit Timer phasengenau gekoppelt.
 - „Als Nächstes“-Karte mit Piktogramm auf Übungs- und Pausen-Screens.
 - **Alle Trainingsseiten teilen ein Gerüst** (`trScreen` in `js/app.js`, Konzept A): Kopf · Fortschritt · Kreis · Titel · Untertitel ·
-  Karte 1 · Karte 2 · Hauptaktion · Als Nächstes · Navigation – feste Höhen, nur der Inhalt wechselt. Neue Seitentypen nur über dieses Gerüst.
-- Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden“.
+  Karte 1 · Karte 2 · Hauptaktion (links Zurück, rechts Überspringen als Icon) · Als Nächstes – feste Höhen, nur der Inhalt wechselt. Neue Seitentypen nur über dieses Gerüst.
+- Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden ›“
+  nimmt den Platz von Überspringen mit ein (kein doppelter Knopf). „Satz erledigt“ speichert den Satz, Überspringen nicht.
 - Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
 
 ## Branch ux-review – vor dem Merge nach main entfernen
 - `js/demo-seed.js` (erfundener Verlauf) samt Import in `app.js` und Eintrag in `sw.js`; erfundene Einträge tragen `demo: true`.
-- Varianten-Schalter (`DEMO_OPTS`, `renderDemo`, `.demo-*`, `data-sec`): nur die gewählte Variante behalten.
-- Nicht gewählte Design-Vorschläge aus `DESIGNS` und `app.css` streichen; alles mit `DEMO(ux-review)` markiert.
+- Varianten-Schalter (`DEMO_OPTS`, `renderDemo`, `.demo-*`, `icons/entwurf/`): nur die gewählte K3-Variante behalten; alles mit `DEMO(ux-review)` markiert.
 - Version hochzählen, ungenutztes CSS (`.ilist`, `.plan`, `.tbl`, `.setting`) aufräumen.
 
 ## Backlog

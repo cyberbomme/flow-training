@@ -6,6 +6,7 @@ import { db, save, uid, exportJSON, importJSON } from './store.js';
 import * as T from './timer.js';
 import * as PE from './planedit.js';
 import { PAUSE_LINES, DONE_TITLES, QUOTES, SAVE_TOASTS } from './texts.js';
+import { LOGO_VIEWBOX, LOGO_PATH } from './logo.js';
 import { seedDemo } from './demo-seed.js'; // DEMO(ux-review): vor dem Merge entfernen
 if (seedDemo(db)) save();
 
@@ -25,6 +26,7 @@ let catQuery = '';
 let metricSel = null;
 let exitSheet = false;
 let planOpen = null; // aufgeklappte Zeile im Plan-Editor
+let pickSel = []; // Mehrfachauswahl beim Hinzufügen zum Plan (Reihenfolge = Antippen)
 let equipSheet = false; // Sheet „Meine Ausrüstung“ im Katalog
 let addSheet = false; // Auswahlfenster „Zu Plan hinzufügen“ auf der Übungsseite
 let showTpl = null;    // Vorlagen aufgeklappt? null = automatisch (offen, solange es keine Pläne gibt)
@@ -35,22 +37,19 @@ let startAsk = null;   // Rückfrage vor dem Start mit Entwurf (Plan-ID) – nur
 // DEMO(ux-review): Varianten zum Vergleichen, umschaltbar über den Knopf „Varianten“. Vor dem Merge entfernen.
 const DEMO_OPTS = {
   k3: { label: 'Plan-Editor: Knöpfe bei Entwurf', opts: [['a', 'A · Speichern + Starten'], ['b', 'B · Verwerfen + Speichern + Starten'], ['c', 'C · Starten fragt nach']] },
-  k4: { label: 'Training: Zurück / Überspringen', opts: [['a', 'A · Im Kopf neben dem Zähler'], ['b', 'B · Neben der Hauptaktion']] },
-  sec: { label: 'Abschnitts-Überschrift', opts: [['pill', 'A · Pill'], ['over', 'B · Dachzeile'], ['serif', 'C · Serif']] },
 };
 let demoSheet = false;
-const demo = (() => { try { return { k3: 'a', k4: 'a', sec: 'pill', ...JSON.parse(localStorage.getItem('flow.demo') || '{}') }; } catch { return { k3: 'a', k4: 'a', sec: 'pill' }; } })();
-const saveDemo = () => { try { localStorage.setItem('flow.demo', JSON.stringify(demo)); } catch {} document.documentElement.dataset.sec = demo.sec; };
-document.documentElement.dataset.sec = demo.sec;
+const demo = (() => { try { return { k3: 'a', ...JSON.parse(localStorage.getItem('flow.demo') || '{}') }; } catch { return { k3: 'a' }; } })();
+const saveDemo = () => { try { localStorage.setItem('flow.demo', JSON.stringify(demo)); } catch {} };
 let wakeLock = null;
 
 // Designs: alle mit denselben Schriften, Formen und Regeln (docs/DESIGN.md), nur die Farbfamilien wechseln.
-// DEMO(ux-review): Sand, Nebel und Lavendel sind Vorschläge – nach der Entscheidung bleiben nur die gewählten.
+// Standard ist Flow.
 const DESIGNS = [
-  { id: 'flow', name: 'Salbei', note: 'Creme, Salbei & Rosé', sw: ['#F3F0EB', '#9DAA96', '#D4A19C', '#3F6B5C'] },
-  { id: 'sand', name: 'Sand', note: 'Sand, Ton & Umbra', sw: ['#F4EEE6', '#C2A68C', '#C9978A', '#7A4B32'], proposal: true },
-  { id: 'nebel', name: 'Nebel', note: 'Nebelgrau, Meer & Petrol', sw: ['#EFF1EF', '#98AEB0', '#D0A7A5', '#2E5E68'], proposal: true },
-  { id: 'lavendel', name: 'Lavendel', note: 'Lavendel, Rosé & Pflaume', sw: ['#F3F0F2', '#A79DB5', '#D3A3A9', '#5B4A72'], proposal: true },
+  { id: 'flow', name: 'Flow', note: 'Creme, Salbei & Rosé', sw: ['#F3F0EB', '#9DAA96', '#D4A19C', '#3F6B5C'] },
+  { id: 'sand', name: 'Sand', note: 'Sand, Ton & Umbra', sw: ['#F4EEE6', '#C2A68C', '#C9978A', '#7A4B32'] },
+  { id: 'nebel', name: 'Nebel', note: 'Nebelgrau, Meer & Petrol', sw: ['#EFF1EF', '#98AEB0', '#D0A7A5', '#2E5E68'] },
+  { id: 'lavendel', name: 'Lavendel', note: 'Lavendel, Rosé & Pflaume', sw: ['#F3F0F2', '#A79DB5', '#D3A3A9', '#5B4A72'] },
 ];
 T.setSound(db.sound);
 // Muskelgruppen-Filter: Mehrfachauswahl (früher ein einzelner Wert in db.muscle)
@@ -184,11 +183,8 @@ const icon = {
   bellOff: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></svg>',
 };
 
-// TODO(Design): Platzhalter-Signet – echtes Line-Art-Logo (meditierende Figur über fließender Form) fehlt noch (DESIGN.md §9).
-// Farbvarianten über currentColor: .logo (forest), .logo.rose, .logo.white
-const LOGO = `<span class="logo" role="img" aria-label="flow.training"><svg viewBox="0 0 32 32">
-  <circle cx="16" cy="7.5" r="2.6"/><path d="M16 11v6.5M10.5 15l5.5 2.5 5.5-2.5M9 21.5c3-2.4 11-2.4 14 0"/>
-  <path d="M4 26c3.5-2.6 6.5 1.6 10 0s6.5-2.4 9.5-.4 4.5 1.2 4.5 1.2"/></svg></span>`;
+// Logo (js/logo.js) in der Akzentfarbe des Designs (--color-sage), Farbe über currentColor
+const LOGO = `<span class="logo" role="img" aria-label="flow.training"><svg viewBox="${LOGO_VIEWBOX}"><path class="fill" fill-rule="evenodd" d="${LOGO_PATH}"/></svg></span>`;
 
 // Florale Line-Art in Rosé – nur auf Leer- und Erfolgs-Screens
 const LEAF = `<span class="leaf" aria-hidden="true"><svg viewBox="0 0 64 64">
@@ -221,9 +217,9 @@ const empty = (line, sub = '', cta = '') => `<div class="empty">${LEAF}<p class=
 const circleFig = (ex, cls = "") => `<div class="ic-circle ${cls}">${figureStatic(ex, true)}</div>`;
 
 // ── Router ────────────────────────────────────────────────
-const route = () => (location.hash.slice(2) || 'katalog').split('/').map(decodeURIComponent);
+const route = () => (location.hash.slice(2) || 'plaene').split('/').map(decodeURIComponent);
 const go = (h) => { location.hash = '#/' + h; };
-window.addEventListener('hashchange', () => { equipSheet = false; render(); });
+window.addEventListener('hashchange', () => { equipSheet = false; pickSel = []; render(); });
 
 function render() {
   if (location.hash !== lastHash) { addSheet = false; tplSheet = null; planMenu = false; startAsk = null; } // Fenster nicht auf neue Seiten mitnehmen
@@ -242,7 +238,7 @@ function render() {
   else if (view === 'fortschritt') html = viewProgress(a);
   else if (view === 'einstellungen' && a === 'zeiten') html = viewTempo();
   else if (view === 'einstellungen') html = viewSettings();
-  else { go('katalog'); return; }
+  else { go('plaene'); return; }
   main.innerHTML = html;
   document.body.dataset.view = view;
 
@@ -277,6 +273,9 @@ function renderDemo() {
       <div class="sheet-head"><p class="serif">Varianten</p><button class="link" data-act="demo-close">Fertig</button></div>
       <p class="sheet-hint">Nur in dieser Demo. Die Auswahl gilt sofort auf allen Seiten.</p>
       ${Object.entries(DEMO_OPTS).map(([k, o]) => `<p class="demo-l">${o.label}</p>${seg(k, o.opts, demo[k])}`).join('')}
+      <p class="demo-l">App-Icon (Entwürfe, eingebaut ist A)</p>
+      <div class="demo-icons">${[['a', 'Creme · Salbei'], ['b', 'Creme · Waldgrün'], ['c', 'Salbei · Creme'], ['d', 'Waldgrün · Creme']].map(([k, l]) =>
+        `<figure><img src="icons/entwurf/icon-${k}.png" alt="Icon-Entwurf ${k.toUpperCase()}"><figcaption>${k.toUpperCase()} · ${l}</figcaption></figure>`).join('')}</div>
       <p class="demo-l">Design</p>${seg('design', DESIGNS.map((d) => [d.id, d.name]), db.design || 'flow')}
       <p class="demo-l">Erscheinungsbild</p>${seg('theme', [['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']], db.theme || 'system')}
     </div>` : '');
@@ -286,7 +285,7 @@ const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene',
 // ── Katalog ───────────────────────────────────────────────
 function viewCatalog(pickFor) {
   const plan = pickFor && shownPlan(pickFor);
-  const head = plan ? header('Übung hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
+  const head = plan ? header('Übungen hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
   return `${head}
     <input class="search" type="search" id="q" placeholder="Übung suchen" value="${esc(catQuery)}" autocomplete="off">
     <div class="chips scroll" role="group" aria-label="Filter">
@@ -296,6 +295,7 @@ function viewCatalog(pickFor) {
       return `<button class="chip ${on ? 'on' : ''}" data-act="muscle" data-id="${g.id}" aria-pressed="${on}">${g.name}</button>`;
     }).join('')}</div>
     <div id="list" class="lgroup"></div>
+    ${pickFor ? '<div id="pick-bar"></div>' : ''}
     ${equipSheet ? `<div class="sheet-bg" data-act="equip-sheet-close"></div>
     <div class="sheet equip-sheet" role="dialog" aria-label="Meine Ausrüstung">
       <div class="sheet-head"><p class="serif">Meine Ausrüstung</p><button class="link" data-act="equip-all">${db.equip.length === EQUIPMENT.length ? 'Alle abwählen' : 'Alle wählen'}</button></div>
@@ -312,10 +312,22 @@ function renderCatalogList(pickFor) {
     .filter((ex) => !q || (ex.name + ' ' + ex.muscles).toLowerCase().includes(q));
   const el = $('#list');
   if (!list.length) { el.innerHTML = empty('Keine passende Übung.', 'Wähl mehr Ausrüstung, weitere Muskelgruppen oder ändere die Suche.'); return; }
-  el.innerHTML = list.map((ex) => lrow({
-    attrs: pickFor ? `href="#" data-act="pick" data-plan="${pickFor}" data-ex="${ex.id}"` : `href="#/uebung/${ex.id}"`,
-    ic: circleFig(ex), title: esc(ex.name) + (ex.mode === 'time' ? `<span class="t-ic" aria-label="auf Zeit">${icon.rest}</span>` : ''),
-    sub: esc(ex.muscles), right: pickFor ? icon.plus : icon.chev })).join('');
+  el.innerHTML = list.map((ex) => {
+    const sel = pickFor && pickSel.includes(ex.id);
+    return lrow({ cls: sel ? 'sel' : '',
+      tag: pickFor ? 'button' : 'a',
+      attrs: pickFor ? `data-act="pick" data-ex="${ex.id}" aria-pressed="${sel}"` : `href="#/uebung/${ex.id}"`,
+      ic: circleFig(ex), title: esc(ex.name) + (ex.mode === 'time' ? `<span class="t-ic" aria-label="auf Zeit">${icon.rest}</span>` : ''),
+      sub: esc(ex.muscles), right: pickFor ? `<span class="pick-ck">${sel ? icon.check : ''}</span>` : icon.chev });
+  }).join('');
+  if (pickFor) renderPickBar(pickFor);
+}
+// Leiste „N Übungen hinzufügen“ – erscheint, sobald etwas ausgewählt ist
+function renderPickBar(planId) {
+  const n = pickSel.length, bar = $('#pick-bar');
+  if (!bar) return;
+  bar.innerHTML = n ? `<div class="actionbar pick"><button class="btn text" data-act="pick-clear">Aufheben</button>
+    <button class="btn primary" data-act="pick-add" data-plan="${planId}">${icon.plus}Hinzufügen (${n})</button></div>` : '';
 }
 
 // Beschreibung → erster Satz als Hinweis, Rest als Checkliste
@@ -615,29 +627,22 @@ function trScreen({ kind, hero, title, sub, card1, card2, main, next }) {
   const prevB = (cls) => `<button class="${cls}" data-act="prev" ${A.idx === 0 ? 'disabled' : ''} aria-label="Zurück">${icon.back}</button>`;
   const skipL = kind === 'rest' ? 'Pause überspringen' : 'Satz überspringen (wird nicht gespeichert)';
   const skipB = (cls) => `<button class="${cls}" data-act="skip" ${kind === 'done' ? 'disabled' : ''} aria-label="${skipL}">${icon.chev}</button>`;
-  // DEMO(ux-review) K4: A = Zurück/Weiter im Kopf neben dem Zähler, B = neben der Hauptaktion
-  const pager = demo.k4 === 'a';
+  // Zurück und Überspringen links und rechts neben der Hauptaktion. In der Pause wird die Hauptaktion breiter (kein doppelter Knopf).
   const counter = `<div class="tr-title"><b>${esc(A.planName)}</b><small>${Math.min(A.idx + 1, A.steps.length)} / ${A.steps.length}</small></div>`;
-  let mainRow, nav = '';
-  if (pager) {
-    mainRow = main;
-    if (kind === 'done') nav = `<div class="tr-nav single"><button class="btn text danger-text" data-act="discard">Verwerfen</button></div>`;
-  } else {
-    const right = kind === 'rest' ? '' : kind === 'done'
-      ? `<button class="icon-btn side danger" data-act="discard" aria-label="Training verwerfen">${icon.trash}</button>` : skipB('icon-btn side');
-    mainRow = `<div class="tr-mainrow ${kind === 'rest' ? 'wide' : ''}">${prevB('icon-btn side')}${main}${right}</div>`;
-  }
-  return `<section class="tr-screen k4-${demo.k4}">
+  const right = kind === 'rest' ? '' : kind === 'done'
+    ? `<button class="icon-btn side danger" data-act="discard" aria-label="Training verwerfen">${icon.trash}</button>` : skipB('icon-btn side');
+  const mainRow = `<div class="tr-mainrow ${kind === 'rest' ? 'wide' : ''}">${prevB('icon-btn side')}${main}${right}</div>`;
+  return `<section class="tr-screen">
     <header class="tr-top">
       <button class="icon-btn" data-act="exit" aria-label="Training beenden">${icon.del}</button>
-      ${pager ? `<div class="tr-pager">${prevB('pg')}${counter}${skipB('pg')}</div>` : counter}
+      ${counter}
       <button class="icon-btn" data-act="sound" aria-label="Ton ${db.sound ? 'aus' : 'an'}schalten">${db.sound ? icon.bell : icon.bellOff}</button>
     </header>
     <div class="progress"><div style="width:${pct}%"></div></div>
     <div class="tr-hero">${hero}</div>
     <h2 class="tr-name">${title}</h2>
     <p class="tr-set">${sub}</p>
-    ${card1}${card2}${mainRow}${next}${nav}</section>`;
+    ${card1}${card2}${mainRow}${next}</section>`;
 }
 const trMain = (act, label, ic, soft, after = '') => `<button class="btn ${soft ? '' : 'primary'} tr-main" data-act="${act}">${ic}${label}${after}</button>`;
 
@@ -949,7 +954,7 @@ function viewSettings() {
     <div class="design-opts" role="radiogroup" aria-label="Design">${DESIGNS.map((d) => `
       <button class="design-opt ${design === d.id ? 'on' : ''}" data-act="design" data-design="${d.id}" role="radio" aria-checked="${design === d.id}">
         <span class="sw">${d.sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>
-        ${d.proposal ? '<span class="prop-tag">Neu</span>' : ''}<b>${d.name}</b><small>${d.note}</small></button>`).join('')}</div>
+        <b>${d.name}</b><small>${d.note}</small></button>`).join('')}</div>
     <div class="seg seg3" role="radiogroup" aria-label="Erscheinungsbild">${[['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) =>
       `<button class="${theme === k ? 'on' : ''}" data-act="theme" data-theme="${k}" role="radio" aria-checked="${theme === k}">${l}</button>`).join('')}</div>
     ${pill('Training')}
@@ -1112,10 +1117,17 @@ document.addEventListener('click', (ev) => {
     case 'equip-all':
       db.equip = db.equip.length === EQUIPMENT.length ? [] : EQUIPMENT.map((e) => e.id); save(); render(); break;
     case 'pick': {
-      ev.preventDefault();
+      const id = btn.dataset.ex;
+      pickSel = pickSel.includes(id) ? pickSel.filter((x) => x !== id) : [...pickSel, id];
+      renderCatalogList(route()[1]);
+      break;
+    }
+    case 'pick-clear': pickSel = []; renderCatalogList(route()[1]); break;
+    case 'pick-add': {
       const p = editPlan(btn.dataset.plan);
-      p.items.push(newItem(btn.dataset.ex)); save();
-      toast(`${byId[btn.dataset.ex].name} hinzugefügt`);
+      for (const id of pickSel) p.items.push(newItem(id));
+      const n = pickSel.length; pickSel = []; save();
+      toast(n === 1 ? `${byId[p.items[p.items.length - 1].exId].name} hinzugefügt` : `${n} Übungen hinzugefügt`);
       go('plan/' + p.id);
       break;
     }
