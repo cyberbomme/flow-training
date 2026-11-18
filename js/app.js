@@ -710,6 +710,7 @@ function viewSettings() {
       <p class="hint">Deine Daten liegen nur auf diesem Gerät. Exportier sie ab und zu, dann gehen sie nicht verloren.</p>
     </div>
     <div class="about">${LOGO}<div class="ver">flow.training ${esc(self.APP_VERSION || '')}</div>
+      <button class="btn ghost small" data-act="check-update">Nach Update suchen</button>
       <a href="https://github.com/cyberbomme/flow-training" target="_blank" rel="noopener">Quellcode auf GitHub</a></div>`;
 }
 
@@ -968,6 +969,7 @@ document.addEventListener('click', (ev) => {
     case 'tempo-reset':
       if (confirm('Alle Tempi auf die Schätzung zurücksetzen?')) { db.tempo = {}; save(); render(); }
       break;
+    case 'check-update': checkUpdate(); break;
     case 'setup': db.setup = Math.min(20, Math.max(0, (db.setup ?? 5) + +btn.dataset.d)); save(); render(); break;
     case 'del-session':
       if (confirm('Dieses Training aus dem Verlauf löschen?')) { db.history = db.history.filter((s) => s.id !== btn.dataset.id); save(); go('verlauf'); }
@@ -1033,6 +1035,26 @@ PE.initDrag((srcId, targetId, pos) => {
   else if (before && !PE.find(p.items, srcId)?.parent) toast('Aus Superset gelöst');
 });
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+// Service Worker: Updates ohne HTTP-Cache prüfen, neue Version sofort übernehmen.
+let swReg = null;
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => { swReg = r; }).catch(() => {});
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded) return; // Erstinstallation: kein Neuladen nötig
+    reloaded = true; location.reload();      // Zustand (auch laufendes Training) liegt im Speicher
+  });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') swReg?.update().catch(() => {}); });
+}
+async function checkUpdate() {
+  if (!swReg) { toast('Updates gibt es nur in der installierten Web-App'); return; }
+  toast('Suche nach Updates …');
+  try {
+    await swReg.update();
+    if (swReg.installing || swReg.waiting) toast('Neue Version wird geladen …');
+    else toast(`Du hast die neueste Version (${self.APP_VERSION})`);
+  } catch { toast('Keine Verbindung – später nochmal versuchen'); }
+}
 
 render();

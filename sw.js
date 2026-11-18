@@ -1,6 +1,8 @@
-// Offline-Cache: stale-while-revalidate – Updates erscheinen beim nächsten Öffnen.
+// Offline-Cache. Strategie: Netz zuerst (mit kurzer Wartezeit), sonst Cache.
+// So kommt bei Verbindung immer die aktuelle Version, offline läuft die App trotzdem.
 importScripts('js/version.js');
 const CACHE = 'flow-training-' + self.APP_VERSION;
+const NET_TIMEOUT = 3000; // ms – danach aus dem Cache, damit schlechtes Studio-WLAN nicht blockiert
 const SHELL = [
   './', 'index.html', 'app.css', 'manifest.webmanifest',
   'js/app.js', 'js/planedit.js', 'js/version.js', 'js/exercises.js', 'js/figure.js', 'js/store.js', 'js/timer.js',
@@ -8,7 +10,10 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // cache: 'reload' umgeht den HTTP-Cache von GitHub Pages (10 min), sonst landen alte Dateien im neuen Cache
+  e.waitUntil(caches.open(CACHE)
+    .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -18,9 +23,15 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
-  e.respondWith(caches.open(CACHE).then(async (c) => {
+  e.respondWith((async () => {
+    const c = await caches.open(CACHE);
+    const net = fetch(e.request, { cache: 'no-cache' }).then((r) => { if (r.ok) c.put(e.request, r.clone()); return r; });
+    const timeout = new Promise((res) => setTimeout(res, NET_TIMEOUT));
+    try {
+      const r = await Promise.race([net, timeout]);
+      if (r) return r;
+    } catch {}
     const hit = await c.match(e.request, { ignoreSearch: true });
-    const net = fetch(e.request).then((r) => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => hit);
     return hit || net;
-  }));
+  })());
 });

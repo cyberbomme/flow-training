@@ -413,6 +413,8 @@ body:has(#resume:not([hidden])) main { padding-bottom: 72px; }
 .design-opt .sample-flow { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
 .design-opt .sample-classic { font-family: -apple-system, system-ui, sans-serif; font-weight: 700; letter-spacing: -.02em; }
 .about { text-align: center; color: var(--color-text-muted); font-size: 14px; margin-top: 32px; }
+.about { display: grid; justify-items: center; gap: 8px; }
+.about .btn { margin-top: 4px; }
 .about .ver { font: 600 20px/1.2 var(--font-display); color: var(--color-text); letter-spacing: var(--display-track); }
 
 /* ── Als Nächstes ────────────────────────────── */
