@@ -13,7 +13,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
 const fmtNum = (n) => (n == null ? '' : String(Math.round(n * 100) / 100).replace('.', ','));
 const fmtDate = (t, opts = { day: '2-digit', month: '2-digit', year: '2-digit' }) => new Date(t).toLocaleDateString('de-DE', opts);
-const fmtDur = (s) => { const m = Math.round(s / 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
+const fmtDur = (s) => { const m = Math.round(s / 60); if (m < 1) return 'unter 1 min'; return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
 
 const main = $('#main');
 let stops = [];
@@ -344,7 +344,7 @@ function viewPlanEditor(id) {
   const list = p.items.map((it) => it.type === 'group' ? groupBlock(p, it) : it.type === 'rest' ? restRow(it) : exRow(p, it, null)).join('');
   return `<header class="app-head"><a class="back" href="#/plaene">${icon.back}Pläne</a>
       <div class="head-row"><input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans">${LOGO}</div></header>
-    <p class="sub plan-sub" id="plan-meta">${planIc(p, 'xs')}<span>${planLabel(p) ? `${planLabel(p)} · ` : ''}${planMeta(est)}${dirty ? ' · <span class="dirty">nicht gespeichert</span>' : ''}</span></p>
+    <div class="sub plan-sub" id="plan-meta">${planIc(p, 'xs')}<span>${planLabel(p) ? `${planLabel(p)} · ` : ''}${planMeta(est)}${dirty ? ' · <span class="dirty">nicht gespeichert</span>' : ''}</span></div>
     ${p.items.length ? `<p class="hint">Am Griff ziehen zum Sortieren. Auf eine Übung ziehen und kurz halten bildet ein Superset.</p>` : ''}
     <div class="plist" id="plan-list" data-plan="${p.id}">${list || '<p class="hint">Noch leer. Füg Übungen und Pausen hinzu.</p>'}</div>
     <div class="row">
