@@ -43,3 +43,12 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   Karte 1 · Karte 2 · Hauptaktion · Als Nächstes · Navigation – feste Höhen, nur der Inhalt wechselt. Neue Seitentypen nur über dieses Gerüst.
 - Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden“.
 - Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
+
+## Backlog
+- **Export nach WHOOP Strength Trainer** (geprüft 2026-11-18, noch nicht gebaut):
+  - WHOOP hat keine öffentliche Schreib-API (Developer-API v2 nur lesend). Inoffizielle private API (z. B. hevy2whoop) verstößt gegen die WHOOP-AGB → nicht nutzen.
+  - Gangbarer Weg über Strava: Strava nimmt seit 21.05.2026 Kraft-Sätze an (`POST /api/v3/uploads`, `data_type=json`, Scope `activity:write`,
+    Sätze mit `exercise_type`, `repetitions`, `weight` kg, `duration` s). WHOOP importiert Strava-Kraftaktivitäten inkl. Übungen.
+  - Offen: Zuordnung unserer Übungen zu Stravas `exercise_type`-Kennungen; ob WHOOP daraus Muscular Load berechnet (Community berichtet gemischt);
+    OAuth braucht das Client-Secret → eigener Strava-API-Zugang der Besitzerin oder kleiner Server-Proxy. Daten verlassen dann das Gerät.
+  - Vorschlag: erst Machbarkeitstest mit einem echten Training (Upload-Skript), dann Einbau.
