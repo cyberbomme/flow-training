@@ -27,8 +27,10 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - **Listenzeile:** `lrow()` – Kreis-Icon · Titel · eine Unterzeile · rechts ein Element (Chevron, Griff, Play oder Wert).
   Gruppierte Liste (Einstellungen, Sheets): `.listbox` mit `.li`.
 - Plan-Editor: „···“ oben rechts bleibt immer (Kopieren, Verwerfen, Löschen), wird nie durch „Speichern“ ersetzt.
-  Feste Aktionsleiste unten; mit Entwurf gibt es auch „Starten“ ohne Speichern (Entwurf bleibt).
-- Tab-Leiste: Pläne · Übungen · Verlauf · Einstellungen; Start-Seite sind die Pläne.
+  Feste Aktionsleiste unten; mit Entwurf „Speichern · Starten“. Starten fragt: „Speichern & starten“ oder „Ohne Speichern starten“ –
+  ohne Speichern wird der Entwurf nach Ende oder Abbruch des Trainings automatisch verworfen (`active.tempDraft`).
+- Tab-Leiste: Pläne · Übungen · Verlauf; Start-Seite sind die Pläne. Einstellungen als Zahnrad oben rechts (neben dem Logo),
+  „Zurück“ führt zur zuletzt besuchten Tab-Seite.
 - Übungen hinzufügen: Mehrfachauswahl, unten „Hinzufügen (n)“.
 - Katalog: eine wischbare Filterzeile (Ausrüstung als Sheet, Muskelgruppen mit Mehrfachauswahl in `db.muscles`).
 
@@ -64,10 +66,16 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 
 ## Branch ux-review – vor dem Merge nach main entfernen
 - `js/demo-seed.js` (erfundener Verlauf) samt Import in `app.js` und Eintrag in `sw.js`; erfundene Einträge tragen `demo: true`.
-- Varianten-Schalter (`DEMO_OPTS`, `renderDemo`, `.demo-*`, `icons/entwurf/`): nur die gewählte K3-Variante behalten; alles mit `DEMO(ux-review)` markiert.
+- Fenster „Varianten“ (`renderDemo`, `.demo-*`) und `icons/entwurf/`; alles mit `DEMO(ux-review)` markiert.
 - Version hochzählen, ungenutztes CSS (`.ilist`, `.plan`, `.tbl`, `.setting`) aufräumen.
 
 ## Backlog
+- **App-Icon auswählen + Logo-Grafik verbessern** (Wunsch 2026-11-18, noch nicht gebaut):
+  - Vier Icon-Entwürfe liegen vor (A Creme·Salbei – eingebaut, B Creme·Waldgrün, C Salbei·Creme, D Waldgrün·Creme). Entscheidung offen.
+  - Idee: Auswahl in den Einstellungen. Achtung: iOS liest das Home-Bildschirm-Icon nur beim „Zum Home-Bildschirm“ –
+    eine Änderung wirkt erst nach Entfernen und erneutem Hinzufügen. Alternativ einfach die gewählte Variante fest einbauen.
+  - Logo (`js/logo.js`) ist aus einer kleinen Vorlage vektorisiert; feine Fließlinien sind grob. Später durch die
+    Original-Vektordatei bzw. eine bessere Grafik ersetzen (dann auch Icons neu erzeugen).
 - **Zyklusphase als Plan-Parameter** (Wunsch 2026-11-18, noch nicht gebaut):
   - Im Trainingsplan eine Zyklusphase wählbar machen (Menstruation, Follikelphase, Eisprung, Lutealphase);
     daraus passen sich Intensität (Gewicht) und Wiederholungen automatisch an.

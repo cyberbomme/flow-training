@@ -34,13 +34,8 @@ let tplSheet = null;   // Vorschau einer Vorlage (ID)
 let planMenu = false;  // „···“-Menü im Plan-Editor
 let startAsk = null;   // Rückfrage vor dem Start mit Entwurf (Plan-ID) – nur Demo-Variante K3 C
 
-// DEMO(ux-review): Varianten zum Vergleichen, umschaltbar über den Knopf „Varianten“. Vor dem Merge entfernen.
-const DEMO_OPTS = {
-  k3: { label: 'Plan-Editor: Knöpfe bei Entwurf', opts: [['a', 'A · Speichern + Starten'], ['b', 'B · Verwerfen + Speichern + Starten'], ['c', 'C · Starten fragt nach']] },
-};
+// DEMO(ux-review): Fenster „Varianten“ (Icon-Entwürfe, Design, Erscheinungsbild). Vor dem Merge entfernen.
 let demoSheet = false;
-const demo = (() => { try { return { k3: 'a', ...JSON.parse(localStorage.getItem('flow.demo') || '{}') }; } catch { return { k3: 'a' }; } })();
-const saveDemo = () => { try { localStorage.setItem('flow.demo', JSON.stringify(demo)); } catch {} };
 let wakeLock = null;
 
 // Designs: alle mit denselben Schriften, Formen und Regeln (docs/DESIGN.md), nur die Farbfamilien wechseln.
@@ -180,6 +175,7 @@ const icon = {
   trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5M14 11v5"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
   x: '<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.6 2.4 2.8-.6.6 2.8 2.4 1.6-1.3 2.5 1.3 2.5-2.4 1.6-.6 2.8-2.8-.6L12 21.2l-1.6-2.4-2.8.6-.6-2.8-2.4-1.6L5.9 12 4.6 9.5 7 7.9l.6-2.8 2.8.6z"/></svg>',
   bellOff: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></svg>',
 };
 
@@ -209,7 +205,8 @@ function pickText(pool, salt, i = 0) {
 
 // AppHeader: Titel links, Signet rechts, dünne Linie darunter
 // right: Element statt Signet (z. B. „···“ oder ein Link)
-const header = (title, back, right = LOGO) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
+const TOP = `<div class="head-r">${LOGO}<a class="icon-btn" href="#/einstellungen" aria-label="Einstellungen">${icon.gear}</a></div>`;
+const header = (title, back, right = back ? LOGO : TOP) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
   <div class="head-row"><h1>${esc(title)}</h1>${right}</div></header>`;
 const more = (t) => `<span class="more">${esc(t)}${icon.chev}</span>`;
 const pill = (t) => `<h2 class="pill-label">${t}</h2>`;
@@ -253,6 +250,7 @@ function render() {
   if (view === 'training') startTicker();
   manageWakeLock(view === 'training');
 
+  if (tabOf(view)) lastTop = tabOf(view);
   $$('.tabbar a').forEach((t) => t.classList.toggle('on', t.dataset.tab === tabOf(view)));
   const banner = $('#resume');
   banner.hidden = !db.active || view === 'training';
@@ -272,7 +270,6 @@ function renderDemo() {
     <div class="sheet demo-sheet" role="dialog" aria-label="Varianten">
       <div class="sheet-head"><p class="serif">Varianten</p><button class="link" data-act="demo-close">Fertig</button></div>
       <p class="sheet-hint">Nur in dieser Demo. Die Auswahl gilt sofort auf allen Seiten.</p>
-      ${Object.entries(DEMO_OPTS).map(([k, o]) => `<p class="demo-l">${o.label}</p>${seg(k, o.opts, demo[k])}`).join('')}
       <p class="demo-l">App-Icon (Entwürfe, eingebaut ist A)</p>
       <div class="demo-icons">${[['a', 'Creme · Salbei'], ['b', 'Creme · Waldgrün'], ['c', 'Salbei · Creme'], ['d', 'Waldgrün · Creme']].map(([k, l]) =>
         `<figure><img src="icons/entwurf/icon-${k}.png" alt="Icon-Entwurf ${k.toUpperCase()}"><figcaption>${k.toUpperCase()} · ${l}</figcaption></figure>`).join('')}</div>
@@ -280,7 +277,10 @@ function renderDemo() {
       <p class="demo-l">Erscheinungsbild</p>${seg('theme', [['system', 'System'], ['light', 'Hell'], ['dark', 'Dunkel']], db.theme || 'system')}
     </div>` : '');
 }
-const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf', einstellungen: 'einstellungen' })[v];
+// Letzte Tab-Seite merken – dorthin führt „Zurück“ aus den Einstellungen
+let lastTop = 'plaene';
+const BACK_FROM_SETTINGS = { plaene: ['#/plaene', 'Pläne'], katalog: ['#/katalog', 'Übungen'], verlauf: ['#/verlauf', 'Verlauf'] };
+const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf', einstellungen: null })[v];
 
 // ── Katalog ───────────────────────────────────────────────
 function viewCatalog(pickFor) {
@@ -371,7 +371,6 @@ const catText = (name, label) => label && !name.toLowerCase().includes(label.toL
 
 // ── Pläne ─────────────────────────────────────────────────
 function viewPlans() {
-  const add = `<button class="icon-btn head-btn" data-act="new-plan" aria-label="Neuer Plan">${icon.plus}</button>`;
   const top = !db.plans.length
     ? empty('Noch kein Training geplant.', 'Starte mit deinem Körper, nicht gegen ihn – mit einer Vorlage oder einem eigenen Plan.',
       `<button class="btn primary" data-act="new-plan">${icon.plus}Eigenen Plan anlegen</button>`)
@@ -380,8 +379,9 @@ function viewPlans() {
       const ic = `<span class="ic-wrap">${planIc(p)}${draftOf(p.id) ? '<i class="draft-dot" aria-label="Nicht gespeicherte Änderungen"></i>' : ''}</span>`;
       return lrow({ attrs: `href="#/plan/${p.id}"`, ic, title: esc(p.name), sub: catText(p.name, planLabel(p)) + planMeta(est), right: '',
         after: `<button class="play-btn" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'} aria-label="${esc(p.name)} starten">${icon.play}</button>` });
-    }).join('')}</div>`;
-  return header('Pläne', null, add) + top + templatesBlock() + (tplSheet ? templateSheet(tplSheet) : '');
+    }).join('')}</div>
+    <button class="btn new-plan" data-act="new-plan">${icon.plus}Neuer Plan</button>`;
+  return header('Pläne') + top + templatesBlock() + (tplSheet ? templateSheet(tplSheet) : '');
 }
 
 const tplEquip = (exs) => {
@@ -439,15 +439,12 @@ function viewPlanEditor(id) {
     ${startAsk === id ? startAskSheet(id) : ''}`;
 }
 
-// Feste Leiste über der Tab-Leiste. Mit Entwurf: Demo-Varianten K3 A/B/C (DEMO(ux-review))
+// Feste Leiste über der Tab-Leiste. Mit Entwurf: Speichern · Starten – Starten fragt, ob gespeichert werden soll.
 function editorBar(id, dirty, n) {
   const dis = n ? '' : 'disabled';
   if (!dirty) return `<div class="actionbar"><button class="btn primary" data-act="start" data-plan="${id}" ${dis}>${icon.play}Training starten</button></div>`;
-  const saveB = `<button class="btn" data-act="draft-save" data-plan="${id}">Speichern</button>`;
-  const startB = (act) => `<button class="btn primary" data-act="${act}" data-plan="${id}" ${dis}>${icon.play}Starten</button>`;
-  if (demo.k3 === 'b') return `<div class="actionbar three"><button class="btn text danger-text" data-act="draft-discard" data-plan="${id}">Verwerfen</button>${saveB}${startB('start-draft')}</div>`;
-  if (demo.k3 === 'c') return `<div class="actionbar two">${saveB}${startB('start-ask')}</div>`;
-  return `<div class="actionbar two">${saveB}${startB('start-draft')}</div>`;
+  return `<div class="actionbar two"><button class="btn" data-act="draft-save" data-plan="${id}">Speichern</button>
+    <button class="btn primary" data-act="start-ask" data-plan="${id}" ${dis}>${icon.play}Starten</button></div>`;
 }
 
 function planMenuSheet(p, dirty) {
@@ -467,7 +464,7 @@ function startAskSheet(id) {
   return `<div class="sheet-bg" data-act="start-ask-close"></div>
     <div class="sheet" role="dialog" aria-label="Änderungen speichern?">
       <p class="serif">Änderungen speichern?</p>
-      <p class="sheet-hint">Du kannst den Plan auch nur heute so trainieren. Deine Änderungen bleiben dann als Entwurf erhalten.</p>
+      <p class="sheet-hint">Du kannst den Plan auch nur heute so trainieren. Nach dem Training werden die Änderungen dann verworfen.</p>
       <button class="btn primary big" data-act="save-start" data-plan="${id}">${icon.play}Speichern &amp; starten</button>
       <button class="btn" data-act="start-draft" data-plan="${id}">Ohne Speichern starten</button>
       <button class="btn text" data-act="start-ask-close">Abbrechen</button></div>`;
@@ -563,8 +560,10 @@ function startTraining(planId, useDraft = false) {
   if (db.active && !confirm('Es läuft bereits ein Training. Verwerfen und neu starten?')) { go('training'); return; }
   const p = useDraft ? shownPlan(planId) : planById(planId);
   planMenu = false; startAsk = null;
+  // Ohne Speichern gestartet: Entwurf nach Ende oder Abbruch des Trainings verwerfen
+  const tempDraft = useDraft && !!draftOf(planId);
   const items = JSON.parse(JSON.stringify(p.items));
-  db.active = { planId, planName: p.name, startedAt: Date.now(), items, steps: buildSteps(items), idx: 0, log: {}, timer: null, cur: null };
+  db.active = { planId, tempDraft, planName: p.name, startedAt: Date.now(), items, steps: buildSteps(items), idx: 0, log: {}, timer: null, cur: null };
   T.unlockAudio();
   enterStep(!!db.autopilot);
   go('training');
@@ -833,8 +832,12 @@ function viewSummary() {
   });
 }
 
+// Nach „Ohne Speichern starten“: Entwurf beim Ende des Trainings verwerfen
+function dropTempDraft(A) { if (A?.tempDraft && db.drafts) delete db.drafts[A.planId]; }
+
 function finishTraining() {
   const A = db.active;
+  dropTempDraft(A);
   const items = activeExercises().map(({ it: i, label }) => ({ exId: i.exId, mode: i.mode, sets: A.log[i.id].filter(Boolean), ...(label ? { ss: label } : {}) }));
   if (items.length) {
     const s = { id: uid(), date: A.startedAt, end: Date.now(), planId: A.planId, planName: A.planName, items };
@@ -949,7 +952,8 @@ function viewTempo() {
 function viewSettings() {
   const theme = db.theme || 'system', design = db.design || 'flow';
   const sw = (act, on, label) => `<input type="checkbox" role="switch" class="switch" data-act="${act}" ${on ? 'checked' : ''} aria-label="${label}">`;
-  return header('Einstellungen') + `
+  const [h, l] = BACK_FROM_SETTINGS[lastTop] || BACK_FROM_SETTINGS.plaene;
+  return header('Einstellungen', [h, l]) + `
     ${pill('Aussehen')}
     <div class="design-opts" role="radiogroup" aria-label="Design">${DESIGNS.map((d) => `
       <button class="design-opt ${design === d.id ? 'on' : ''}" data-act="design" data-design="${d.id}" role="radio" aria-checked="${design === d.id}">
@@ -1260,7 +1264,7 @@ document.addEventListener('click', (ev) => {
     case 'exit-cancel': exitSheet = false; render(); break;
     case 'finish': finishTraining(); break;
     case 'discard':
-      if (confirm('Training verwerfen? Erfasste Sätze gehen verloren.')) { db.active = null; exitSheet = false; save(); go('plaene'); }
+      if (confirm('Training verwerfen? Erfasste Sätze gehen verloren.')) { dropTempDraft(db.active); db.active = null; exitSheet = false; save(); go('plaene'); }
       break;
 
     // Verlauf
@@ -1269,7 +1273,7 @@ document.addEventListener('click', (ev) => {
     case 'demo-close': demoSheet = false; renderDemo(); break;
     case 'demo-set': {
       const { k, v } = btn.dataset;
-      if (k === 'design' || k === 'theme') { db[k] = v; save(); applyTheme(); } else { demo[k] = v; saveDemo(); }
+      db[k] = v; save(); applyTheme();
       render(); break;
     }
     case 'all-ex': showAllEx = !showAllEx; render(); break;
