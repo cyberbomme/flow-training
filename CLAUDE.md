@@ -7,13 +7,31 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 **Aussehen, Komponenten und Texte richten sich nach [`docs/DESIGN.md`](docs/DESIGN.md).** Kurz:
 - Tokens als CSS-Variablen in `app.css` (`--color-*`). Dunkelmodus ist daraus abgeleitet (gleiche Farbfamilien),
   Umschaltung Hell/Dunkel/System über `data-theme` auf `<html>`.
-- Zweites Design „Klassisch“ (ursprüngliches orange Design) über `data-design="classic"`: setzt nur dieselben Tokens neu.
-  Komponenten-CSS nutzt ausschließlich Tokens, damit beide Designs funktionieren. Wahl unter *Einstellungen*.
+- Weitere Designs über `data-design="…"` (Liste `DESIGNS` in `js/app.js`): gleiche Schriften, Formen und Regeln,
+  nur andere Farbfamilien – jedes setzt nur dieselben Tokens neu, hell und dunkel, Kontraste nach WCAG AA geprüft.
+  Komponenten-CSS nutzt ausschließlich Tokens. Wahl unter *Einstellungen*. „Klassisch“ wurde entfernt (2026-11-18).
 - Schriften lokal in `fonts/` (Oswald = Display/Zahlen, Gilda Display = Emotion, Montserrat = Body). Keine Google-CDN-Einbindung.
 - Text in Salbei/Rosé nur dekorativ oder als große Headline; Buttons/Links in `forest`. Fehler/Löschen in `--color-rose-ink`.
+- Logo: `js/logo.js` (aus der Vorlage vektorisiert), Farbe `--color-sage` über currentColor; App-Icon `icons/` = Entwurf A (Creme + Salbei).
 - Offene Punkte aus DESIGN.md §11 sind als `TODO(Design)` im Code markiert (Brand-Farben, Logo-SVG, Fotos, Schriftlizenz).
 - Microcopy: Du-Ansprache, ruhig, bestärkend; bei Gesundheit vorsichtig formulieren. Keine Emojis in UI-Elementen.
 - Motivationstexte zentral in `js/texts.js` (Leitsätze der Marke unverändert in `BRAND`). Längengrenzen je Platz stehen dort; je Training gemischt, ohne Wiederholung.
+
+## Baukasten (ein Stil pro Aufgabe, gilt für jeden neuen Screen)
+- **Abschnitt:** immer `pill()` (PillLabel). Die Versal-Zeile (`.overline`) nur als Dachzeile über einem Titel.
+- **Mehr / weiter:** Text + Chevron-Icon (`more()`), überall gleich. Keine Zeichen wie ›, ››› oder ».
+- **Zurück:** immer das Icon `icon.back`, auch im Training.
+- **Knöpfe, drei Stufen:** `.btn.primary` = Hauptaktion (eine pro Screen), `.btn` = Fläche (Nebenaktion), `.btn.text` = selten.
+  Löschen/Entfernen/Verwerfen immer in `--color-rose-ink` (`.danger-text`, im Menü `.li.danger`).
+- **An / aus:** Schalter (`input.switch` mit `role="switch"`), keine Kästchen.
+- **Listenzeile:** `lrow()` – Kreis-Icon · Titel · eine Unterzeile · rechts ein Element (Chevron, Griff, Play oder Wert).
+  Gruppierte Liste (Einstellungen, Sheets): `.listbox` mit `.li`.
+- Plan-Editor: „···“ oben rechts bleibt immer (Kopieren, Verwerfen, Löschen), wird nie durch „Speichern“ ersetzt.
+  Feste Aktionsleiste unten; mit Entwurf „Speichern · Starten“. Starten fragt: „Speichern & starten“ oder „Ohne Speichern starten“ –
+  ohne Speichern wird der Entwurf nach Ende oder Abbruch des Trainings automatisch verworfen (`active.tempDraft`).
+- Tab-Leiste: Pläne · Übungen · Verlauf · Einstellungen; Start-Seite sind die Pläne.
+- Übungen hinzufügen: Mehrfachauswahl, unten „Hinzufügen (n)“.
+- Katalog: eine wischbare Filterzeile (Ausrüstung als Sheet, Muskelgruppen mit Mehrfachauswahl in `db.muscles`).
 
 ## Arbeitsweise
 - Neue Übungen in `js/exercises.js`; Figuren danach per Playwright-Screenshot prüfen (`~/pw-venv`).
@@ -40,11 +58,18 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Tempo ist die eine Quelle für Animation, Autopilot und Plandauer: 1 Animationszyklus = 1 Wiederholung; mit Timer phasengenau gekoppelt.
 - „Als Nächstes“-Karte mit Piktogramm auf Übungs- und Pausen-Screens.
 - **Alle Trainingsseiten teilen ein Gerüst** (`trScreen` in `js/app.js`, Konzept A): Kopf · Fortschritt · Kreis · Titel · Untertitel ·
-  Karte 1 · Karte 2 · Hauptaktion · Als Nächstes · Navigation – feste Höhen, nur der Inhalt wechselt. Neue Seitentypen nur über dieses Gerüst.
-- Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden“.
+  Karte 1 · Karte 2 · Hauptaktion (links Zurück, rechts Überspringen als Icon) · Als Nächstes – feste Höhen, nur der Inhalt wechselt. Neue Seitentypen nur über dieses Gerüst.
+- Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden ›“
+  nimmt den Platz von Überspringen mit ein (kein doppelter Knopf). „Satz erledigt“ speichert den Satz, Überspringen nicht.
 - Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
 
 ## Backlog
+- **App-Icon auswählen + Logo-Grafik verbessern** (Wunsch 2026-11-18, noch nicht gebaut):
+  - Vier Icon-Entwürfe in `docs/icon-entwuerfe/` (A Creme·Salbei – eingebaut, B Creme·Waldgrün, C Salbei·Creme, D Waldgrün·Creme). Entscheidung offen.
+  - Idee: Auswahl in den Einstellungen. Achtung: iOS liest das Home-Bildschirm-Icon nur beim „Zum Home-Bildschirm“ –
+    eine Änderung wirkt erst nach Entfernen und erneutem Hinzufügen. Alternativ einfach die gewählte Variante fest einbauen.
+  - Logo (`js/logo.js`) ist aus einer kleinen Vorlage vektorisiert; feine Fließlinien sind grob. Später durch die
+    Original-Vektordatei bzw. eine bessere Grafik ersetzen (dann auch Icons neu erzeugen).
 - **Zyklusphase als Plan-Parameter** (Wunsch 2026-11-18, noch nicht gebaut):
   - Im Trainingsplan eine Zyklusphase wählbar machen (Menstruation, Follikelphase, Eisprung, Lutealphase);
     daraus passen sich Intensität (Gewicht) und Wiederholungen automatisch an.
