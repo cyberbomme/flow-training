@@ -130,10 +130,13 @@ function newItem(exId) {
 
 // Sekunden pro Wiederholung: eigene Einstellung > Schätzung im Katalog > 3 s
 const tempoOf = (exId) => db.tempo?.[exId] ?? TEMPO[exId] ?? 3;
+// Übungen mit side: true zählen je Seite – für Zeit und Autopilot doppelt so viele Wiederholungen
+const sidesOf = (exId) => (byId[exId]?.side ? 2 : 1);
+const amountTxt = (it) => (it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.${byId[it.exId]?.side ? ' je Seite' : ''}`);
 
 // Geschätzte Dauer: Tempo × Wiederholungen + 10 s Rüstzeit pro Satz
 function planEstimate(p) {
-  const work = (it) => (it.mode === 'time' ? it.dur : it.reps * tempoOf(it.exId) + 10);
+  const work = (it) => (it.mode === 'time' ? it.dur : it.reps * sidesOf(it.exId) * tempoOf(it.exId) + 10);
   let s = 0, n = 0, g = 0;
   for (const it of p.items) {
     if (it.type === 'rest') s += it.dur;
@@ -316,7 +319,7 @@ function viewExercise(id) {
   return header(ex.name, ['#/katalog', 'Übungen']) + `
     <div class="fig-hero" data-anim="${ex.id}"></div>
     <p class="overline">${esc(ex.muscles)}</p>
-    <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${ex.mode === 'time' ? 'Auf Zeit' : 'Wiederholungen'}</span></div>
+    <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${ex.mode === 'time' ? 'Auf Zeit' : ex.side ? 'Wiederholungen je Seite' : 'Wiederholungen'}</span></div>
     <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(lead)}</p></div></div>
     ${points.length ? pill('Worauf ich achte') + `<ul class="checklist">${points.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
     ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
@@ -445,7 +448,7 @@ function startAskSheet(id) {
 // Einheitliche Zeile: Kreis · Name + Werte · Griff. Antippen klappt die Regler auf.
 const grip = `<button class="handle" data-handle aria-label="Ziehen zum Verschieben">${icon.grip}</button>`;
 const exSummary = (it, inGroup) => {
-  const v = it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`;
+  const v = amountTxt(it);
   const w = it.weight ? ` · ${fmtNum(it.weight)} kg` : '';
   return inGroup ? v + w : `${it.sets} × ${v}${w} · Pause ${it.rest} s`;
 };
@@ -565,10 +568,10 @@ function enterStep(autoStart) {
       if (counted) {
         // Vorlauf nur im Autopilot und nur, wenn keine Pause davor lag (die endet schon mit 3-2-1)
         const setup = db.autopilot && auto && !afterRest ? (db.setup ?? 5) : 0;
-        const work = it.mode === 'time' ? it.dur : Math.max(1, A.cur.reps) * tempoOf(it.exId);
+        const work = it.mode === 'time' ? it.dur : Math.max(1, A.cur.reps) * sidesOf(it.exId) * tempoOf(it.exId);
         A.timer = T.makeTimer(setup + work);
         A.timer.setup = setup;
-        if (it.mode !== 'time') { A.timer.reps = Math.max(1, A.cur.reps); A.timer.tempo = tempoOf(it.exId); }
+        if (it.mode !== 'time') { A.timer.reps = Math.max(1, A.cur.reps) * sidesOf(it.exId); A.timer.tempo = tempoOf(it.exId); }
         if (auto) T.start(A.timer);
       }
     }
@@ -643,7 +646,7 @@ function viewTraining() {
   }
 
   const it = itemOf(step), ex = byId[it.exId];
-  const target = it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`;
+  const target = amountTxt(it);
   const counted = !!A.timer;
   const setLine = step.ss ? `<span class="tag-l">${step.ss}</span> Runde ${step.set + 1} von ${step.of}` : `Satz ${step.set + 1} von ${it.sets}`;
   return trScreen({
@@ -699,7 +702,7 @@ function nextCard() {
     if (cur.k === 'work' && cur.ss && nx.ss && nx.set === cur.set) over = 'Danach direkt';
     ic = circleFig(ex, 'sm');
     title = `${nx.ss ? `<span class="tag-l">${nx.ss}</span> ` : ''}${esc(ex.name)}`;
-    sub = `${nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`} · ${it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.`}${it.weight ? ` · ${fmtNum(it.weight)} kg` : ''}`;
+    sub = `${nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`} · ${amountTxt(it)}${it.weight ? ` · ${fmtNum(it.weight)} kg` : ''}`;
   }
   return `<div class="next-card">${ic}<div class="next-txt"><small class="next-over">${over}</small><b>${title}</b><small>${sub}</small></div></div>`;
 }

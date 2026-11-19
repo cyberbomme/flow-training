@@ -40,10 +40,11 @@ export function solve(p) {
   const hp = p.hp;
   const n = add(hp, dir(p.tr, L.torso));
   const h = add(n, dir(p.hd ?? p.tr, L.neck));
-  const [e, w] = limb(n, p.ua, p.fa, p.w, L.ua, L.fa, p.wb ?? 1);
+  // Fehlende Winkel = Glied hängt senkrecht nach unten
+  const [e, w] = limb(n, p.ua ?? 180, p.fa ?? 180, p.w, L.ua, L.fa, p.wb ?? 1);
   const hasArm2 = p.ua2 != null || p.w2;
   const [e2, w2] = hasArm2 ? limb(n, p.ua2, p.fa2, p.w2, L.ua, L.fa, p.wb2 ?? 1) : [e, w];
-  const [k, a] = limb(hp, p.th, p.sh, p.a, L.thigh, L.shin, p.ab ?? -1);
+  const [k, a] = limb(hp, p.th ?? 180, p.sh ?? 180, p.a, L.thigh, L.shin, p.ab ?? -1);
   const hasLeg2 = p.th2 != null || p.a2;
   const [k2, a2] = hasLeg2 ? limb(hp, p.th2, p.sh2, p.a2, L.thigh, L.shin, p.ab2 ?? -1) : [k, a];
   const f = footOf(k, a, p.ff ?? 1);

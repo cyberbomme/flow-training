@@ -36,6 +36,8 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 ## Arbeitsweise
 - Neue Übungen in `js/exercises.js`; Figuren danach per Playwright-Screenshot prüfen (`~/pw-venv`).
   Muskelgruppen (Filter, Plan-Icons) werden automatisch aus `muscles` abgeleitet (`MUSCLE_GROUPS`) – Begriffe dort ggf. ergänzen.
+  `side: true` = Wiederholungen je Seite: Anzeige „Wdh. je Seite“, Autopilot und Plandauer zählen doppelt (`sidesOf`).
+  Fehlende Gelenkwinkel in einer Pose = Glied hängt senkrecht (Vorgabe in `figure.js`).
 - Plan-Icons automatisch (`js/planicon.js`): erst Stichwort im Titel (Zyklusphasen, HIIT, Mobilität, Regeneration, Klettern,
   Core, Beine, Oberkörper, Ganzkörper, Kraft), sonst aus Muskelgruppen/Zeitanteil der Übungen.
 - Version steht nur in `js/version.js` (Anzeige in *Einstellungen*, Cache-Name im Service Worker). Bei jedem Deploy hochzählen.
@@ -44,6 +46,8 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 
 ## Pläne & Supersets
 - Beispielpläne als Vorlagen in `js/templates.js` (Kurzform ex/ss/rest). „Übernehmen“ kopiert mit neuen IDs, Herkunft in `plan.tpl`.
+  Sechs Vorlagen `tpl-studio-*` stammen aus den Studio-Workouts der Besitzerin (2026-11-19): 2 Runden Aufwärmen + Supersets aus zwei Übungen à 3 Runden,
+  Übungen auf Schwerpunkte verteilt (Power, Beine & Po, Oberkörper, Schlingentrainer, Core, Hantel-Komplexe), damit sich die Pläne kaum wiederholen.
 - Plan-Items: `ex` | `rest` | `group` (Superset: `rounds`, `rest` nach jeder Runde, `items` = Übungen). Logik in `js/planedit.js`.
 - Superset-Regeln (vom Besitzer festgelegt): keine Pause zwischen den Übungen, beliebig viele Übungen, eine Rundenzahl für alle.
 - Plan-Editor: Optik „Zeilen“ (Konzept A), Aufbau „Aufklappen“ (Konzept C). Griff ziehen = sortieren,
