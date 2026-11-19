@@ -90,3 +90,10 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   - Offen: Zuordnung unserer Übungen zu Stravas `exercise_type`-Kennungen; ob WHOOP daraus Muscular Load berechnet (Community berichtet gemischt);
     OAuth braucht das Client-Secret → eigener Strava-API-Zugang der Besitzerin oder kleiner Server-Proxy. Daten verlassen dann das Gerät.
   - Vorschlag: erst Machbarkeitstest mit einem echten Training (Upload-Skript), dann Einbau.
+- **Apple Health Integration** statt oder ergänzend zu Strava/WHOOP (Wunsch 2026-11-19, noch nicht geprüft, noch nicht gebaut):
+  - Trainings als Workout (Krafttraining, Dauer, ggf. Energie) in Apple Health schreiben; Daten bleiben auf dem Gerät, kein OAuth/Server nötig.
+  - Hürde: HealthKit ist nur für native Apps zugänglich, nicht für eine PWA im Safari/Home-Bildschirm.
+  - Mögliche Wege (zu prüfen): (a) Kurzbefehl (Shortcuts) mit Health-Aktion, aus der App per `shortcuts://run-shortcut?name=…&input=text&text=…`
+    mit den Trainingsdaten aufgerufen; (b) native Hülle (z. B. Capacitor) mit HealthKit-Plugin – bricht mit „kein Build“ und GitHub Pages.
+  - Zu klären: ob Strava bzw. WHOOP Trainings ohnehin nach Apple Health weiterreichen (dann reicht evtl. ein Weg);
+    welche Felder Health für Krafttraining annimmt (einzelne Sätze/Übungen vermutlich nicht).
