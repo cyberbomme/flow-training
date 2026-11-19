@@ -97,3 +97,15 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
     mit den Trainingsdaten aufgerufen; (b) native Hülle (z. B. Capacitor) mit HealthKit-Plugin – bricht mit „kein Build“ und GitHub Pages.
   - Zu klären: ob Strava bzw. WHOOP Trainings ohnehin nach Apple Health weiterreichen (dann reicht evtl. ein Weg);
     welche Felder Health für Krafttraining annimmt (einzelne Sätze/Übungen vermutlich nicht).
+- **Native App für iPhone/Android in den App Stores** (Wunsch 2026-11-19, noch nicht gebaut; Weg für Apple Health, s. o.):
+  - GitHub Pages bleibt die Lösung zum Teilen im privaten Umfeld; Store-Apps kommen ergänzend dazu.
+  - Weg: Capacitor-Hülle um den bestehenden Code (ein Code für Web + Apps, Ordner `ios/` und `android/` neu im Repo).
+    Genutzte Browser-Funktionen (localStorage, wakeLock, AudioContext, navigator.share) laufen dort weiter. Kein Neuschreiben in Swift/Kotlin.
+  - Health: HealthKit-Plugin für Capacitor (iOS), Health Connect (Android).
+  - Aufwand/Kosten: Xcode (Mac) bzw. Android Studio; Apple Developer 99 USD/Jahr, Google Play 25 USD einmalig;
+    privates Testen über TestFlight bzw. internen Test-Track ohne öffentliche Veröffentlichung.
+  - Zu beachten: Apple-Richtlinie 4.2 (keine reine Website-Hülle – Offline + HealthKit sprechen dagegen);
+    Datenschutzerklärung und Store-Datenschutzangaben (Gesundheitsdaten, besonders Zyklusphase);
+    Daten unter `kraftkatalog.v1` liegen im Safari-Speicher der PWA → einmaliger Export/Import (z. B. Datei über Teilen) nötig;
+    Store-Versionen müssen gebaut und hochgeladen werden, `git push` reicht dafür nicht.
+  - Vorschlag: Machbarkeitstest (ca. 1–2 Tage) – Capacitor einrichten, auf dem eigenen iPhone starten, ein Training in Apple Health schreiben.
