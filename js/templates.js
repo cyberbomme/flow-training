@@ -8,6 +8,8 @@ const ex = (exId, sets, amount, weight = null, rest = 60) => {
 };
 const ss = (rounds, rest, ...items) => ({ type: 'group', rounds, rest, items });
 const rest = (dur) => ({ type: 'rest', dur });
+// Dehnung: Haltezeit in s (je Seite), Durchgänge
+const st = (exId, dur = 30, sets = 1) => ({ type: 'ex', exId, sets, mode: 'time', reps: 1, dur, weight: null, rest: 0 });
 
 export const TEMPLATES = [
   {
@@ -167,5 +169,24 @@ export const TEMPLATES = [
       ss(3, 60, ex('curl-trizeps', 3, 10, 4), ex('bizepscurl-seitlich', 3, 10, 4)),
       ss(3, 60, ex('trizeps-ueberkopf', 3, 12, 6), ex('seit-frontheben', 3, 10, 3)),
     ],
+  },
+  // ── Dehnen (kind: 'stretch') ──
+  {
+    id: 'tpl-dehnen-ganz', name: 'Ganzkörper dehnen', kind: 'stretch',
+    note: 'Von Kopf bis Fuß, ruhig und ohne Geräte. Gut an freien Tagen oder am Abend.',
+    items: [st('nacken-dehnung'), st('schulter-dehnung'), st('quadrizeps-dehnung'), st('vorbeuge-stehend'),
+      st('katze-kuh', 45), st('kindhaltung', 45), st('figur-vier'), st('rotation-liegend')],
+  },
+  {
+    id: 'tpl-dehnen-huefte', name: 'Hüfte & Beine lösen', kind: 'stretch',
+    note: 'Für Tage mit viel Sitzen oder nach Beintraining. Langsam in jede Dehnung hineinatmen.',
+    items: [st('waden-dehnung'), st('hueftbeuger-dehnung', 40), st('herabschauender-hund'), st('schmetterling', 45),
+      st('sitzende-vorbeuge', 40), st('figur-vier', 40), st('hamstring-liegend')],
+  },
+  {
+    id: 'tpl-dehnen-schultern', name: 'Schultern & Nacken entspannen', kind: 'stretch',
+    note: 'Gegen lange Bildschirmtage. Schultern bleiben tief, Kiefer locker.',
+    items: [st('nacken-dehnung', 40), st('rundruecken-dehnung'), st('schulter-dehnung'), st('brust-dehnung-wand'),
+      st('trizeps-dehnung'), st('lat-dehnung'), st('kindhaltung', 45)],
   },
 ];

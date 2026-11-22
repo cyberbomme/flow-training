@@ -802,7 +802,196 @@ export const EXERCISES = [
       { hp: [42, 62], tr: 15, a: [54, 90], a2: [34, 90], ua: 85, fa: 75 },
     ],
   },
+
+  // ── Dehnen ─────────────────────────────────────────────────
+  // kind: 'stretch' = Dehnübung (gehalten, ohne Verlauf). pos = Ausgangslage für eine ruhige Reihenfolge
+  // (stand → knie → bauch → sitz → ruecken). t = Zielmuskeln mit Gewicht, Schlüssel siehe STRETCH_TARGETS.
+  {
+    id: 'trizeps-dehnung', name: 'Trizeps-Dehnung über Kopf', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Trizeps · Schultern', mode: 'time', side: true,
+    t: { trizeps: 1, schulter: 0.4 },
+    desc: 'Einen Arm nach oben strecken, Ellbogen beugen und die Hand zwischen die Schulterblätter sinken lassen. Mit der anderen Hand den Ellbogen sanft nach hinten ziehen. Kopf bleibt aufrecht.',
+    view: OVERHEAD,
+    from: { hd: 0, ua: 180, fa: 180, w2: null, ua2: 180, fa2: 180 },
+    poses: [{ ...STAND, hd: 345, ua: 28, fa: 200, w2: [56, 11] }],
+  },
+  {
+    id: 'brust-dehnung-wand', name: 'Brustdehnung an der Wand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Brust · Schultern · Bizeps', mode: 'time', side: true,
+    t: { brust: 1, schulter: 0.4, bizeps: 0.3 },
+    desc: 'Seitlich neben eine Wand oder einen Türrahmen stellen, Hand und Unterarm auf Schulterhöhe anlegen. Den Oberkörper langsam von der Wand wegdrehen, bis ein Zug in der Brust entsteht. Schulter bleibt tief.',
+    props: [{ t: 'wall', x: 26 }],
+    from: { w: null, ua: 180, fa: 180 },
+    poses: [{ hp: [50, 51], tr: 0, a: [58, 90], a2: [44, 90], w: [27, 22], ua2: 180, fa2: 180 }],
+  },
+  {
+    id: 'schulter-dehnung', name: 'Schulterdehnung vor der Brust', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Schultern · Oberer Rücken', mode: 'time', side: true,
+    t: { schulter: 1, oruecken: 0.5 },
+    desc: 'Einen Arm gestreckt quer vor die Brust führen. Mit der anderen Hand oberhalb des Ellbogens sanft heranziehen. Schultern locker und tief lassen.',
+    from: { w: null, w2: null, ua: 180, fa: 180, ua2: 180, fa2: 180 },
+    poses: [{ ...STAND, w: [66, 24], w2: [58, 25] }],
+  },
+  {
+    id: 'bizeps-dehnung', name: 'Bizeps- und Unterarmdehnung', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Bizeps · Unterarm', mode: 'time', side: true,
+    t: { bizeps: 1, unterarm: 1 },
+    desc: 'Einen Arm gestreckt nach vorn heben, Handfläche zeigt nach vorn, Finger nach unten. Mit der anderen Hand die Finger sanft zum Körper ziehen. Ellbogen bleibt gestreckt, nicht durchdrücken.',
+    from: { ua: 180, fa: 180, w2: null, ua2: 180, fa2: 180 },
+    poses: [{ ...STAND, ua: 98, fa: 98, w2: [71, 28] }],
+  },
+  {
+    id: 'nacken-dehnung', name: 'Nackendehnung', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Nacken · Oberer Rücken', mode: 'time',
+    t: { schulter: 0.4, oruecken: 0.4 },
+    desc: 'Aufrecht stehen, Hände locker an den Hinterkopf legen. Kinn langsam Richtung Brust sinken lassen, die Hände geben nur ihr Gewicht dazu. Ruhig weiteratmen, nicht ziehen.',
+    from: { hd: 0 },
+    poses: [{ ...STAND, hd: 35, w: [49, 9], w2: [49, 9], wb: -1, wb2: -1 }],
+  },
+  {
+    id: 'rundruecken-dehnung', name: 'Rundrücken im Stand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Oberer Rücken · Schultern', mode: 'time',
+    t: { oruecken: 1, schulter: 0.5, ruecken: 0.4 },
+    desc: 'Hände vor dem Körper verschränken und die Arme nach vorn schieben. Den oberen Rücken rund machen, Kopf sinkt zwischen die Arme. Zwischen die Schulterblätter atmen.',
+    from: { tr: 0, hd: 0 },
+    poses: [{ hp: [46, 51], tr: 12, hd: 40, th: 178, sh: 180, ua: 90, fa: 90 }],
+  },
+  {
+    id: 'lat-dehnung', name: 'Latissimus-Dehnung an der Wand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Rücken · Schultern · Trizeps', mode: 'time',
+    t: { ruecken: 1, oruecken: 0.6, schulter: 0.5, trizeps: 0.3 },
+    desc: 'Hände schulterbreit auf Hüfthöhe an eine Wand oder Stuhllehne legen. Mit dem Gesäß nach hinten gehen, bis Oberkörper und Arme eine Linie bilden. Brust sinkt sanft Richtung Boden.',
+    props: [{ t: 'wall', x: 88 }],
+    from: { hp: [46, 51], tr: 35, hd: 35 },
+    poses: [{ hp: [36, 52], tr: 88, hd: 95, a: [40, 90], w: [87, 50] }],
+  },
+  {
+    id: 'quadrizeps-dehnung', name: 'Oberschenkel vorn im Stand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Oberschenkel · Hüftbeuger', mode: 'time', side: true,
+    t: { quad: 1, hueftbeuger: 0.6 },
+    desc: 'Auf einem Bein stehen, die Ferse des anderen Beins zum Gesäß führen und den Fuß festhalten. Knie zeigen nach unten und bleiben nebeneinander. Becken leicht nach vorn kippen. Bei Bedarf an der Wand abstützen.',
+    from: { th2: 188, sh2: 235, w: null, ua: 180, fa: 180 },
+    poses: [{ ...STAND, th2: 215, sh2: 15, w: [43, 48], ua2: 175, fa2: 175 }],
+  },
+  {
+    id: 'waden-dehnung', name: 'Wadendehnung an der Wand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Wade · Hintere Oberschenkel', mode: 'time', side: true,
+    t: { wade: 1, hamstring: 0.3 },
+    desc: 'Mit den Händen an der Wand abstützen, ein Bein weit nach hinten stellen. Hintere Ferse in den Boden drücken, Bein gestreckt. Das vordere Knie beugen, bis die Wade zieht.',
+    props: [{ t: 'wall', x: 82 }],
+    from: { hp: [41, 52], tr: 18 },
+    poses: [{ hp: [46, 54], tr: 32, a: [54, 90], a2: [28, 90], w: [81, 30], w2: [81, 34] }],
+  },
+  {
+    id: 'vorbeuge-stehend', name: 'Vorbeuge im Stand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Hintere Oberschenkel · Unterer Rücken · Wade', mode: 'time',
+    t: { hamstring: 1, uruecken: 0.6, wade: 0.3 },
+    desc: 'Füße hüftbreit, Knie leicht gebeugt. Aus der Hüfte nach vorn sinken und den Oberkörper locker hängen lassen. Hände Richtung Boden oder Schienbeine. Langsam Wirbel für Wirbel aufrollen.',
+    from: { tr: 0, hd: 0, w: null, w2: null },
+    poses: [{ hp: [44, 50], tr: 150, hd: 165, a: [46, 90], w: [56, 88], w2: [58, 88] }],
+  },
+  {
+    id: 'hueftbeuger-dehnung', name: 'Hüftbeuger im Kniestand', kind: 'stretch', pos: 'knie', equip: [], muscles: 'Hüftbeuger · Oberschenkel', mode: 'time', side: true,
+    t: { hueftbeuger: 1, quad: 0.6 },
+    desc: 'Aus dem Ausfallschritt das hintere Knie auf den Boden setzen (gern auf ein Kissen). Gesäß anspannen und die Hüfte langsam nach vorn schieben, Oberkörper aufrecht. Vorderes Knie bleibt über dem Fuß.',
+    from: { hp: [39, 70], tr: 2 },
+    poses: [{ hp: [44, 71], tr: 355, a: [66, 90], th2: 200, sh2: 268, w: [61, 71], w2: [61, 72] }],
+  },
+  {
+    id: 'herabschauender-hund', name: 'Herabschauender Hund', kind: 'stretch', pos: 'knie', equip: [], muscles: 'Wade · Hintere Oberschenkel · Schultern · Rücken', mode: 'time',
+    t: { wade: 0.8, hamstring: 0.8, schulter: 0.5, ruecken: 0.3 },
+    desc: 'Aus dem Vierfüßlerstand das Gesäß nach oben und hinten schieben, bis der Körper ein umgedrehtes V bildet. Arme lang, Kopf zwischen den Armen. Knie dürfen gebeugt bleiben, Fersen Richtung Boden.',
+    from: { hp: [46, 68], tr: 98, hd: 105 },
+    poses: [{ hp: [44, 52], tr: 132, hd: 150, a: [30, 90], w: [82, 90], w2: [80, 90] }],
+  },
+  {
+    id: 'katze-kuh', name: 'Katze-Kuh', kind: 'stretch', dynamic: true, pos: 'knie', equip: [], muscles: 'Rücken · Rumpf', mode: 'time',
+    t: { ruecken: 0.7, uruecken: 0.7, rumpf: 0.5 },
+    desc: 'Im Vierfüßlerstand mit dem Ausatmen den Rücken rund machen, Kinn zur Brust. Mit dem Einatmen das Brustbein nach vorn schieben, Blick leicht nach vorn. Langsam im Atemrhythmus wechseln.',
+    poses: [
+      { hp: [40, 69], tr: 80, hd: 125, th: 180, sh: 270, w: [68, 90], w2: [67, 90] },
+      { hp: [40, 71], tr: 86, hd: 55, th: 180, sh: 270, w: [68, 90], w2: [67, 90] },
+    ],
+  },
+  {
+    id: 'kindhaltung', name: 'Kindhaltung', kind: 'stretch', pos: 'knie', equip: [], muscles: 'Rücken · Schultern · Gesäß', mode: 'time',
+    t: { ruecken: 0.8, uruecken: 0.6, schulter: 0.3, gesaess: 0.3 },
+    desc: 'Aus dem Vierfüßlerstand das Gesäß auf die Fersen sinken lassen. Arme lang nach vorn ablegen, Stirn Richtung Boden. Knie dürfen auseinander. In den Rücken atmen und loslassen.',
+    from: { hp: [40, 70], tr: 82, hd: 90, th: 180, sh: 270, w: [68, 90], w2: [67, 90] },
+    poses: [{ hp: [34, 76], tr: 98, hd: 115, th: 112, sh: 262, w: [88, 89], w2: [86, 89] }],
+  },
+  {
+    id: 'kobra', name: 'Kobra', kind: 'stretch', pos: 'bauch', equip: [], muscles: 'Bauch · Hüftbeuger', mode: 'time',
+    t: { rumpf: 1, hueftbeuger: 0.5 },
+    desc: 'In Bauchlage die Hände unter die Schultern setzen. Den Oberkörper langsam aufrichten, Becken bleibt am Boden. Nur so weit, wie es sich im unteren Rücken gut anfühlt. Schultern weg von den Ohren.',
+    from: { tr: 86, hd: 88 },
+    poses: [{ hp: [46, 87], tr: 52, hd: 30, th: 270, sh: 270, w: [70, 90], w2: [69, 90] }],
+  },
+  {
+    id: 'sitzende-vorbeuge', name: 'Vorbeuge im Sitzen', kind: 'stretch', pos: 'sitz', equip: [], muscles: 'Hintere Oberschenkel · Rücken', mode: 'time',
+    t: { hamstring: 1, uruecken: 0.6, ruecken: 0.3 },
+    desc: 'Mit gestreckten Beinen aufrecht sitzen. Aus der Hüfte nach vorn neigen, Hände Richtung Füße. Rücken möglichst lang lassen, Knie dürfen leicht gebeugt sein.',
+    from: { tr: 8, hd: 5, w: [50, 85], w2: [51, 85] },
+    poses: [{ hp: [32, 86], tr: 55, hd: 70, th: 90, sh: 90, w: [64, 82], w2: [66, 82] }],
+  },
+  {
+    id: 'schmetterling', name: 'Schmetterling', kind: 'stretch', pos: 'sitz', equip: [], muscles: 'Adduktoren · Gesäß', mode: 'time',
+    t: { adduktoren: 1, gesaess: 0.3 },
+    desc: 'Aufrecht sitzen, Fußsohlen aneinander, Knie fallen nach außen. Füße mit den Händen halten und die Fersen nah zum Körper ziehen. Knie sanft sinken lassen, nicht drücken.',
+    from: { tr: 0, th: 40, sh: 205 },
+    poses: [{ hp: [42, 86], tr: 8, th: 58, sh: 222, w: [52, 86], w2: [53, 86] }],
+  },
+  {
+    id: 'figur-vier', name: 'Gesäßdehnung liegend (Figur 4)', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Gesäß · Unterer Rücken', mode: 'time', side: true,
+    t: { gesaess: 1, uruecken: 0.3 },
+    desc: 'In Rückenlage einen Fuß auf das andere Knie legen. Das untere Bein anheben und den Oberschenkel mit beiden Händen zur Brust ziehen. Kopf und Schultern bleiben entspannt am Boden.',
+    from: { th2: 45, sh2: 150, w: null, w2: null, ua: 90, fa: 90, ua2: 90, fa2: 90 },
+    poses: [{ hp: [52, 84], tr: 270, hd: 270, th: 55, sh: 165, th2: 20, sh2: 95, w: [56, 67], w2: [57, 68] }],
+  },
+  {
+    id: 'hamstring-liegend', name: 'Oberschenkel hinten liegend', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Hintere Oberschenkel · Wade', mode: 'time', side: true,
+    t: { hamstring: 1, wade: 0.3 },
+    desc: 'In Rückenlage ein Bein gestreckt nach oben heben, ein Handtuch oder Band um die Fußsohle legen. Das Bein sanft zu dir ziehen, das andere Bein bleibt lang am Boden.',
+    props: [{ t: 'band', from: [54, 45] }],
+    from: { th: 55, sh: 55 },
+    poses: [{ hp: [52, 84], tr: 270, hd: 270, th: 5, sh: 5, th2: 90, sh2: 90, w: [44, 62], w2: [45, 63] }],
+  },
+  {
+    id: 'rotation-liegend', name: 'Rotation liegend', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Seitliche Rumpfmuskulatur · Unterer Rücken · Gesäß', mode: 'time', side: true,
+    t: { seitrumpf: 1, uruecken: 0.6, rumpf: 0.4, gesaess: 0.3 },
+    desc: 'In Rückenlage die Arme seitlich ablegen. Beide Knie anwinkeln und langsam zu einer Seite sinken lassen. Schultern bleiben am Boden, Blick zur anderen Seite.',
+    from: { th: 18, sh: 160 },
+    poses: [{ hp: [54, 84], tr: 270, hd: 270, th: 45, sh: 140, ua: 300, fa: 300 }],
+  },
+  {
+    id: 'hueftbeuger-stehend', name: 'Hüftbeuger im Stand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Hüftbeuger · Oberschenkel', mode: 'time', side: true,
+    t: { hueftbeuger: 1, quad: 0.5 },
+    desc: 'Großer Schritt nach vorn, hinteres Bein lang, Ferse hoch. Gesäß anspannen und die Hüfte sanft nach vorn schieben, Oberkörper bleibt aufrecht. Hände an der Hüfte.',
+    from: { hp: [43, 54], tr: 0 },
+    poses: [{ hp: [47, 56], tr: 355, a: [66, 90], a2: [25, 90], w: [49, 55], w2: [49, 55] }],
+  },
+  {
+    id: 'brustoeffner', name: 'Brustöffner im Stand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Brust · Schultern', mode: 'time',
+    t: { brust: 1, schulter: 0.5 },
+    desc: 'Hände hinter dem Rücken verschränken, Arme lang machen. Schulterblätter zusammenziehen und die Hände sanft vom Gesäß weg nach hinten-unten schieben. Brustbein hebt sich, Blick geradeaus.',
+    from: { tr: 0, hd: 0, ua: 180, fa: 180 },
+    poses: [{ ...STAND, tr: 356, hd: 350, ua: 215, fa: 210 }],
+  },
+  {
+    id: 'waden-stufe', name: 'Wadendehnung an der Stufe', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Wade', mode: 'time', side: true,
+    t: { wade: 1 },
+    desc: 'Mit dem Fußballen auf eine Stufe stellen, an Wand oder Geländer festhalten. Bein gestreckt lassen und die Ferse langsam unter die Stufe sinken lassen. Das andere Bein ist locker angehoben.',
+    view: '0 -8 100 100', props: [{ t: 'bench', x: 46, y: 81, w: 22 }, { t: 'wall', x: 84 }],
+    from: { hp: [52, 38] },
+    poses: [{ hp: [52, 42], tr: 0, a: [53, 82], th2: 172, sh2: 200, w: [83, 26], ua2: 180, fa2: 180 }],
+  },
+  {
+    id: 'knie-zur-brust', name: 'Knie zur Brust', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Unterer Rücken · Gesäß', mode: 'time',
+    t: { uruecken: 1, ruecken: 0.5, gesaess: 0.4 },
+    desc: 'In Rückenlage beide Knie zur Brust ziehen und die Hände um die Schienbeine legen. Unteren Rücken lang in den Boden sinken lassen, Kopf bleibt liegen. Gern sanft hin und her wiegen.',
+    from: { th: 30, sh: 150, w: null, w2: null, ua: 90, fa: 90, ua2: 90, fa2: 90 },
+    poses: [{ hp: [56, 84], tr: 270, hd: 270, th: 328, sh: 65, w: [45, 68], w2: [46, 69] }],
+  },
 ];
+
+// Dehnungen: from = Ausgangspose als Abweichung von der Dehnpose (null = Wert entfernen).
+// Daraus werden zwei Posen [Ausgang, Dehnung] – die Animation zeigt das Einnehmen, im Training wird die Dehnung gehalten.
+for (const e of EXERCISES) {
+  if (!e.from || e.poses.length !== 1) continue;
+  const p0 = { ...e.poses[0], ...e.from };
+  for (const k in p0) if (p0[k] === null) delete p0[k];
+  e.poses = [p0, e.poses[0]];
+}
 
 export const byId = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 
@@ -825,7 +1014,7 @@ export const TEMPO = {
   'renegade-row': 3, 'floor-press': 3, flys: 3, 'skull-crusher': 3, 'trizeps-ueberkopf': 3, 'trizeps-plank': 3, 'push-plank': 4,
   'schulter-tippen': 1.5, 'plank-pull-through': 3, 'hollow-brustpresse': 2.5, 'schulterdruecken-kniend': 3, 'v-sit-schulterdruecken': 3,
   'around-the-world': 4, 'curl-arnold': 5, 'zottman-curl': 4, 'bizepscurl-seitlich': 3, 'curl-trizeps': 6, 'dead-bug': 3,
-  'crunch-gestreckt': 2.5, 'beinheben-seitlich': 4, 'v-up': 3, 'trx-rudern': 3, 'trx-overhead-squat': 3.5, 'trx-curtsy': 3.5,
+  'crunch-gestreckt': 2.5, 'beinheben-seitlich': 4, 'katze-kuh': 6, 'v-up': 3, 'trx-rudern': 3, 'trx-overhead-squat': 3.5, 'trx-curtsy': 3.5,
 };
 
 // Muskelgruppen für Filter und Plan-Icons – automatisch aus der Muskel-Beschreibung abgeleitet,
@@ -835,8 +1024,28 @@ export const MUSCLE_GROUPS = [
   { id: 'gesaess', name: 'Gesäß', match: /gesäß/i },
   { id: 'brust', name: 'Brust', match: /brust/i },
   { id: 'ruecken', name: 'Rücken', match: /rücken/i },
-  { id: 'schultern', name: 'Schultern', match: /schulter/i },
+  { id: 'schultern', name: 'Schultern', match: /schulter|nacken/i },
   { id: 'arme', name: 'Arme', match: /bizeps|trizeps|unterarm/i },
   { id: 'rumpf', name: 'Rumpf', match: /rumpf|bauch/i },
 ];
 for (const e of EXERCISES) e.groups = MUSCLE_GROUPS.filter((g) => g.match.test(e.muscles)).map((g) => g.id);
+
+// ── Dehnen ────────────────────────────────────────────────
+export const isStretch = (ex) => ex?.kind === 'stretch';
+export const STRETCHES = EXERCISES.filter(isStretch);
+export const STRENGTH = EXERCISES.filter((e) => !isStretch(e));
+export const STRETCH_POS = ['stand', 'knie', 'bauch', 'sitz', 'ruecken'];
+
+// Zielmuskeln der Dehnungen ← Muskel-Beschreibung der Kraftübungen.
+// „Oberschenkel“ allein = vorn, „hintere Oberschenkel“ = hinten.
+export const STRETCH_TARGETS = {
+  brust: /brust/, trizeps: /trizeps|arme/, bizeps: /bizeps|arme/, unterarm: /unterarm/, schulter: /schulter/,
+  oruecken: /oberer rücken/, ruecken: /rücken/, uruecken: /unterer rücken/,
+  quad: (m) => /oberschenkel/.test(m.replace(/hintere oberschenkel/g, '')), hamstring: /hintere oberschenkel/,
+  gesaess: /gesäß/, hueftbeuger: /hüftbeuger/, adduktoren: /adduktor/, wade: /wade/,
+  rumpf: /rumpf|bauch/, seitrumpf: /seitliche rumpf/,
+};
+export function targetsOf(ex) {
+  const m = ex.muscles.toLowerCase();
+  return Object.keys(STRETCH_TARGETS).filter((k) => { const t = STRETCH_TARGETS[k]; return typeof t === 'function' ? t(m) : t.test(m); });
+}

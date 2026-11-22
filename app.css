@@ -527,3 +527,17 @@ body:has(.actionbar) #resume { bottom: calc(var(--tabbar-h) + env(safe-area-inse
 .pick-ck svg { width: 16px; height: 16px; stroke-width: 2.4; }
 .lrow.sel .pick-ck { background: var(--color-forest); border-color: var(--color-forest); }
 .actionbar.pick { grid-template-columns: auto 1fr; }
+
+/* ── Dehnen ───────────────────────────────────────────── */
+.fig-hero.rose { --fig-bg: var(--color-peach); }
+.kind-seg { margin: 4px 0 14px; }
+.plan-filter { margin: 4px 0 12px; }
+.empty.small { padding: 12px 8px 4px; }
+.empty.small p { margin: 0; }
+.stretch-sheet { text-align: left; }
+.stretch-sheet .tpl-top small { display: block; margin-top: 4px; }
+.stretch-sheet .sheet-hint { line-height: 1.5; }
+.stretch-sheet .seg3 { margin: 4px 0; }
+.stretch-opts { margin-top: 12px; display: grid; gap: 4px; }
+.stretch-opts.off { opacity: .45; pointer-events: none; }
+.stretch-opts .seg3 { margin-top: 8px; }

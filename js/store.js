@@ -16,6 +16,12 @@ function defaults() {
     setup: 5,        // Vorlauf in s vor automatisch gestarteten Sätzen ohne Pause davor
     tempo: {},
     muscle: '',      // Muskelgruppen-Filter im Katalog ('' = alle)
+    catKind: 'kraft',   // Katalog: 'kraft' | 'dehnen'
+    planFilter: 'alle', // Planliste: 'alle' | 'kraft' | 'dehnen'
+    stretchOffer: true, // nach Krafttraining passende Dehnungen anbieten
+    stretchHold: 30,    // Haltezeit je Dehnung (s, je Seite) für automatische Dehnpläne
+    stretchSize: 'normal', // Umfang automatischer Dehnpläne (js/stretch.js → STRETCH_SIZES)
+    stretchRot: 0,      // Zähler für den Wechsel im Standard-Set
     drafts: {},      // ungespeicherte Plan-Änderungen je Plan-ID       // eigene Tempi je Übung (s pro Wiederholung), überschreibt TEMPO
     plans: [samplePlan()],
     history: [],

@@ -160,7 +160,7 @@ function move(x, y) {
     const r = e.getBoundingClientRect();
     if (y >= r.top && y <= r.bottom && (!hit || r.height < hit.r.height)) hit = { e, r };
   }
-  const canMerge = drag.kind === 'ex' || drag.kind === 'member';
+  const canMerge = (drag.kind === 'ex' || drag.kind === 'member') && !document.querySelector('#plan-list[data-nomerge]');
   if (!hit) {
     clearMerge();
     const tops = [...document.querySelectorAll('#plan-list > [data-id]')].filter((e) => e !== drag.el);
