@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dehnungen · flow.training</title>
+<link rel="stylesheet" href="../app.css">
+<style>
+  /* Demoseite: alle Dehnübungen mit Animation (nicht Teil der App, nicht im Offline-Cache) */
+  body { padding: 0 16px 48px; max-width: 1100px; margin: 0 auto; }
+  .intro { color: var(--color-text-muted); margin: 0 0 16px; }
+  .ctrl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .card { background: var(--color-surface); border-radius: var(--r-card); padding: 12px; display: grid; gap: 6px; align-content: start; }
+  .card .fig-hero { --fig-bg: var(--color-peach); margin: 0 0 6px; max-height: none; }
+  .card b { font-weight: 600; }
+  .card small { color: var(--color-text-muted); font-size: 13px; line-height: 1.4; }
+  .card .badges { margin: 0; }
+  .grp { margin: 28px 0 10px; }
+</style>
+</head>
+<body>
+<header class="app-head"><div class="head-row"><h1>Dehnungen</h1></div></header>
+<p class="intro">Alle Dehnübungen aus <b>flow.training</b>, jeweils vom Ausgang in die Dehnung. Im Training bewegt sich die Figur während „Einnehmen“ in die Pose und hält sie dann.</p>
+<div class="ctrl">
+  <div class="seg" style="--n:3" role="radiogroup" aria-label="Tempo">
+    <button data-p="3">Schnell</button><button class="on" data-p="6">Normal</button><button data-p="10">Langsam</button>
+  </div>
+  <div class="chips" style="margin:0"><button class="chip" id="std">Nur Standard-Set</button></div>
+</div>
+<div id="out"></div>
+<script type="module">
+import { STRETCHES, STRETCH_POS, TEMPO } from '../js/exercises.js';
+import { STANDARD_SET } from '../js/stretch.js';
+import { animateFigure } from '../js/figure.js';
+
+const POS = { stand: 'Im Stand', knie: 'Kniend & Vierfüßler', bauch: 'Bauchlage', sitz: 'Im Sitzen', ruecken: 'Rückenlage' };
+const stdOf = Object.fromEntries(STANDARD_SET.flatMap((g) => g.ids.map((id) => [id, g.name])));
+let period = 6, onlyStd = false, stops = [];
+
+function draw() {
+  stops.forEach((f) => f()); stops = [];
+  const list = STRETCHES.filter((e) => !onlyStd || stdOf[e.id]);
+  const groups = onlyStd
+    ? STANDARD_SET.map((g) => ({ title: g.name, items: g.ids.map((id) => list.find((e) => e.id === id)).filter(Boolean) }))
+    : STRETCH_POS.map((p) => ({ title: POS[p], items: list.filter((e) => e.pos === p) }));
+  out.innerHTML = groups.filter((g) => g.items.length).map((g) => `<h2 class="pill-label grp">${g.title}</h2><div class="grid">${g.items.map((e) => `
+    <div class="card"><div class="fig-hero" data-id="${e.id}"></div>
+      <b>${e.name}</b><small>${e.muscles}</small>
+      <div class="badges"><span class="badge">${e.side ? 'Je Seite' : 'Beidseitig'}</span>${e.dynamic ? '<span class="badge">Im Atemrhythmus</span>' : ''}${stdOf[e.id] ? `<span class="badge">Standard: ${stdOf[e.id]}</span>` : ''}</div>
+    </div>`).join('')}</div>`).join('');
+  for (const el of out.querySelectorAll('[data-id]')) {
+    const e = STRETCHES.find((x) => x.id === el.dataset.id);
+    stops.push(animateFigure(el, e, { period: e.dynamic ? (TEMPO[e.id] || 6) * period / 6 : period }));
+  }
+}
+document.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => {
+  period = +b.dataset.p; document.querySelectorAll('[data-p]').forEach((x) => x.classList.toggle('on', x === b)); draw();
+});
+std.onclick = () => { onlyStd = !onlyStd; std.classList.toggle('on', onlyStd); draw(); };
+draw();
+window.T = { n: STRETCHES.length, anim: STRETCHES.filter((e) => e.poses.length === 2).length };
+</script>
+</body>
+</html>

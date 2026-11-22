@@ -17,6 +17,7 @@ const ICONS = {
   ober: P('M12 3.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM4.5 12l3.5-3.5h8l3.5 3.5M8 8.5V17M16 8.5V17M8 17h8'),
   ganz: P('M12 3a2.2 2.2 0 1 1 0 4.4A2.2 2.2 0 0 1 12 3zM12 7.5v6M6.5 10.5h11M12 13.5l-3.5 7M12 13.5l3.5 7'),
   kraft: P('M6.5 8v8M17.5 8v8M4 10v4M20 10v4M6.5 12h11'),
+  dehnen: P('M12 3.2a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 0 1 0-3.8zM5.5 3.5l4 5.5h5l4-5.5M12 9v5M12 14l-6 6.5M12 14l6 6.5'),
   plan: P('M7 3.5h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2zM9 8.5h6M9 12h6M9 15.5h4'),
 };
 
@@ -57,16 +58,18 @@ function fromExercises(exItems) {
   return null;
 }
 
-// name: Plan-Titel; exItems: Übungen des Plans (flach, mit exId und mode)
-export function planIcon(name, exItems) {
+// name: Plan-Titel; exItems: Übungen des Plans (flach, mit exId und mode); kind: 'stretch' = Dehnplan
+// Farbe trägt die Art (Wunsch 2026-11-22): Rosé = Dehnen, Salbei = Kraft – auch bei Zyklus-Stichworten.
+export function planIcon(name, exItems, kind) {
+  if (kind === 'stretch') return { id: 'dehnen', label: 'Dehnen', tone: 'rose', from: 'art', svg: ICONS.dehnen };
   const t = ` ${(name || '').toLowerCase()} `;
   const hit = KEYWORDS.find((k) => k.words.some((w) => t.includes(w)));
   const id = hit?.id || fromExercises(exItems) || 'plan';
   const meta = BY_ID[id] || { id: 'plan', label: '', tone: 'sage' };
-  return { id, label: meta.label, tone: meta.tone, from: hit ? 'titel' : 'uebungen', svg: ICONS[id] };
+  return { id, label: meta.label, tone: 'sage', from: hit ? 'titel' : 'uebungen', svg: ICONS[id] };
 }
 
-export const planIconHTML = (name, exItems, cls = '') => {
-  const p = planIcon(name, exItems);
+export const planIconHTML = (name, exItems, cls = '', kind) => {
+  const p = planIcon(name, exItems, kind);
   return `<div class="ic-circle plan-ic ${p.tone === 'rose' ? 'rose' : ''} ${cls}" title="${p.label}">${p.svg}</div>`;
 };

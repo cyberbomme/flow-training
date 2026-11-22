@@ -55,6 +55,25 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Änderungen im Editor landen in `db.drafts[planId]` (Entwurf). Start-Button heißt dann „Speichern & starten“,
   dazu „Speichern“/„Verwerfen“. Entwurf, der wieder dem Plan gleicht, wird automatisch entfernt. Start aus der Planliste nutzt die gespeicherte Fassung.
 
+## Dehnen (Wunsch 2026-11-22)
+- Dehnübungen stehen in `js/exercises.js` mit `kind: 'stretch'`, `pos` (stand → knie → bauch → sitz → ruecken, für eine ruhige Reihenfolge)
+  und `t` (Zielmuskeln mit Gewicht; Schlüssel in `STRETCH_TARGETS`, abgeleitet aus `muscles` der Kraftübungen). Immer gehalten (`mode: 'time'`),
+  `side: true` = je Seite (zwei Schritte im Training: rechts, links). `from` = Ausgangspose (Abweichung von der Dehnpose) → Animation
+  Ausgang → Dehnung (6 s je Zyklus); im Training bewegt sich die Figur während „Einnehmen“ hinein und hält dann. `dynamic: true` (Katze-Kuh) wechselt weiter.
+  Alle Dehnungen mit Animation: `docs/dehnen-demo.html` (nicht im Offline-Cache).
+- Bezeichnung: **Kraft · Dehnen** (Katalog-Umschalter `db.catKind`, Planfilter Alle · Kraft · Dehnen in `db.planFilter`).
+- Pläne sind entweder Kraft- oder Dehnpläne (`plan.kind === 'stretch'`), nie gemischt. Farbe trägt die Art: **Rosé = Dehnen, Salbei = Kraft**
+  (auch Zyklus-Pläne sind Salbei). Dehnpläne: keine Supersets, keine Pausen; Regler Haltezeit + Durchgänge. „+“ fragt bei Filter „Alle“ nach der Art.
+- Nach einem Krafttraining: automatischer Dehnplan (`js/stretch.js`, `pickStretches`) – wird nicht gespeichert und erscheint nicht in der Planliste.
+  Zusammensetzung: **Standard-Set** (Rückenstrecker, Hüftlendenmuskel, Brustmuskel, Oberschenkel hinten, Zwillingswadenmuskel – `STANDARD_SET`),
+  je Bereich wechselt die Übung von Training zu Training (`db.stretchRot`, zählt beim Start des Dehnens weiter); dann **gezielte** Dehnungen
+  zu den trainierten Übungen. Beides zusammen = Umfang (Kurz 5 / Normal 7 / Ausführlich 10), das Standard-Set hat Vorrang, keine zwei Übungen desselben Bereichs.
+  Einstellungen: an/aus (`db.stretchOffer`), Haltezeit 20–60 s (`db.stretchHold`), Umfang (`db.stretchSize`).
+- Angebot nach dem Training (Variante A, entschieden 2026-11-22): nach „Speichern“ Rückfrage „Passende Dehnungen zum Abschluss?“
+  mit gezielten/Standard-Dehnungen, Umfang, „Dehnen starten“ und „Überspringen“.
+- Dehn-Training (`active.stretch`): jede Dehnung mit 5 s Vorlauf „Einnehmen“, startet von selbst. Karte 2 = Haltezeit ±5 s, Hauptaktion „Weiter“ breit
+  (kein Überspringen-Knopf, es wird ohnehin nichts gespeichert). × beendet sofort. **Kein Verlauf**, Abschluss „Fertig“ führt zurück zum Krafttraining im Verlauf.
+
 ## Training-Ablauf
 - Zeit-Übungen starten nach einer Pause automatisch. Bildaufbau Wiederholung/Zeit identisch (Ring im Figur-Kreis, Regler-Karte).
 - Autopilot (Einstellung): auch Wiederholungen zählen herunter (Tempo × Wdh.) und schalten automatisch weiter.

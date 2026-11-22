@@ -1,11 +1,12 @@
-import { EXERCISES, EQUIPMENT, byId, TEMPO, MUSCLE_GROUPS } from './exercises.js';
+import { EXERCISES, EQUIPMENT, byId, TEMPO, MUSCLE_GROUPS, isStretch, STRENGTH } from './exercises.js';
+import { pickStretches, stretchItems, stretchSecs, STRETCH_SIZES, SWITCH, HOLD_MIN, HOLD_MAX } from './stretch.js';
 import { planIcon, planIconHTML } from './planicon.js';
 import { TEMPLATES } from './templates.js';
 import { figureStatic, animateFigure } from './figure.js';
 import { db, save, uid, exportJSON, importJSON } from './store.js';
 import * as T from './timer.js';
 import * as PE from './planedit.js';
-import { PAUSE_LINES, DONE_TITLES, QUOTES, SAVE_TOASTS } from './texts.js';
+import { PAUSE_LINES, DONE_TITLES, QUOTES, SAVE_TOASTS, STRETCH_DONE_TITLES, STRETCH_LINES } from './texts.js';
 import { LOGO_VIEWBOX, LOGO_PATH } from './logo.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -31,6 +32,9 @@ let showTpl = null;    // Vorlagen aufgeklappt? null = automatisch (offen, solan
 let tplSheet = null;   // Vorschau einer Vorlage (ID)
 let planMenu = false;  // „···“-Menü im Plan-Editor
 let startAsk = null;   // Rückfrage „Speichern & starten“ / „Ohne Speichern starten“ (Plan-ID)
+let newSheet = false;  // „Neuer Plan“: Kraft oder Dehnen?
+let stretchAsk = null; // Rückfrage nach dem Krafttraining: { done, after } (Variante A)
+
 
 let wakeLock = null;
 
@@ -67,8 +71,10 @@ const planById = (id) => db.plans.find((p) => p.id === id);
 
 // Plan-Icon automatisch aus Titel-Stichworten bzw. den Übungen (js/planicon.js)
 const planExercises = (p) => PE.flatten(p.items).map((x) => x.it);
-const planIc = (p, cls = '') => planIconHTML(p.name, planExercises(p), cls);
-const planLabel = (p) => planIcon(p.name, planExercises(p)).label;
+const isStretchPlan = (p) => p?.kind === 'stretch';
+const kindOf = (p) => (isStretchPlan(p) ? 'dehnen' : 'kraft');
+const planIc = (p, cls = '') => planIconHTML(p.name, planExercises(p), cls, p.kind);
+const planLabel = (p) => (isStretchPlan(p) ? '' : planIcon(p.name, planExercises(p), p.kind).label); // Dehnen sagt schon die Unterzeile
 
 // Entwürfe: Änderungen im Editor landen in db.drafts[planId], bis gespeichert oder verworfen wird.
 const draftOf = (id) => db.drafts?.[id];
@@ -117,6 +123,7 @@ function lastFor(exId) {
 
 function newItem(exId) {
   const ex = byId[exId], last = lastFor(exId);
+  if (isStretch(ex)) return { id: uid(), type: 'ex', exId, sets: 1, mode: 'time', reps: 1, dur: db.stretchHold ?? 30, weight: null, rest: 0 };
   const item = { id: uid(), type: 'ex', exId, sets: 3, mode: ex.mode, reps: 10, dur: 30, weight: null, rest: 60 };
   if (last?.sets.length) {
     const s = last.sets[last.sets.length - 1];
@@ -132,7 +139,8 @@ function newItem(exId) {
 const tempoOf = (exId) => db.tempo?.[exId] ?? TEMPO[exId] ?? 3;
 // Übungen mit side: true zählen je Seite – für Zeit und Autopilot doppelt so viele Wiederholungen
 const sidesOf = (exId) => (byId[exId]?.side ? 2 : 1);
-const amountTxt = (it) => (it.mode === 'time' ? `${it.dur} s` : `${it.reps} Wdh.${byId[it.exId]?.side ? ' je Seite' : ''}`);
+const STRETCH_PERIOD = 6; // s für einen Animationszyklus einer Dehnung (Einnehmen, Halten, Lösen)
+const amountTxt = (it) => (it.mode === 'time' ? `${it.dur} s${isStretch(byId[it.exId]) && byId[it.exId].side ? ' je Seite' : ''}` : `${it.reps} Wdh.${byId[it.exId]?.side ? ' je Seite' : ''}`);
 
 // Geschätzte Dauer: Tempo × Wiederholungen + 10 s Rüstzeit pro Satz
 function planEstimate(p) {
@@ -143,11 +151,14 @@ function planEstimate(p) {
     else if (it.type === 'group') {
       g++; n += it.items.length;
       s += it.rounds * it.items.reduce((a, m) => a + work(m), 0) + Math.max(0, it.rounds - 1) * it.rest;
-    } else { n++; s += it.sets * work(it) + Math.max(0, it.sets - 1) * it.rest; }
+    } else if (isStretch(byId[it.exId])) { n++; s += stretchSecs(it); }
+    else { n++; s += it.sets * work(it) + Math.max(0, it.sets - 1) * it.rest; }
   }
-  return { n, s, g };
+  return { n, s, g, stretch: isStretchPlan(p) };
 }
-const planMeta = ({ n, s, g }) => `${n} Übung${n === 1 ? '' : 'en'}${g ? ` · ${g} Superset${g === 1 ? '' : 's'}` : ''} · ca. ${fmtDur(s)}`;
+const planMeta = ({ n, s, g, stretch }) => stretch
+  ? `${n} Dehnung${n === 1 ? '' : 'en'} · ca. ${fmtDur(s)}`
+  : `${n} Übung${n === 1 ? '' : 'en'}${g ? ` · ${g} Superset${g === 1 ? '' : 's'}` : ''} · ca. ${fmtDur(s)}`;
 
 const icon = {
   katalog: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.5v6M7 10.5h10M12 13.5l-3.5 6M12 13.5l3.5 6"/></svg>',
@@ -174,6 +185,7 @@ const icon = {
   trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5M14 11v5"/></svg>',
   undo: '<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
   x: '<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  stretch: '<svg viewBox="0 0 24 24"><path d="M12 3.2a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 0 1 0-3.8zM5.5 3.5l4 5.5h5l4-5.5M12 9v5M12 14l-6 6.5M12 14l6 6.5"/></svg>',
   bellOff: '<svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></svg>',
 };
 
@@ -216,7 +228,7 @@ const go = (h) => { location.hash = '#/' + h; };
 window.addEventListener('hashchange', () => { equipSheet = false; pickSel = []; render(); });
 
 function render() {
-  if (location.hash !== lastHash) { addSheet = false; tplSheet = null; planMenu = false; startAsk = null; } // Fenster nicht auf neue Seiten mitnehmen
+  if (location.hash !== lastHash) { addSheet = false; tplSheet = null; planMenu = false; startAsk = null; newSheet = false; } // Fenster nicht auf neue Seiten mitnehmen
   stops.forEach((f) => f()); stops = [];
   clearInterval(ticker); ticker = null;
   const [view, a, b] = route();
@@ -233,6 +245,7 @@ function render() {
   else if (view === 'einstellungen' && a === 'zeiten') html = viewTempo();
   else if (view === 'einstellungen') html = viewSettings();
   else { go('plaene'); return; }
+  if (stretchAsk && view !== 'training') html += stretchAskSheet();
   main.innerHTML = html;
   document.body.dataset.view = view;
 
@@ -240,7 +253,7 @@ function render() {
   for (const el of $$('[data-anim]', main)) {
     const id = el.dataset.anim;
     const synced = view === 'training' && !!db.active?.timer;
-    stops.push(animateFigure(el, byId[id], { period: tempoOf(id), phase: synced ? () => trainingPhase(id) : undefined }));
+    stops.push(animateFigure(el, byId[id], { period: isStretch(byId[id]) && !byId[id].dynamic ? STRETCH_PERIOD : tempoOf(id), phase: synced ? () => trainingPhase(id) : undefined }));
   }
   if (view === 'katalog' || (view === 'plan' && b === 'add')) renderCatalogList(b === 'add' ? a : null);
   if (view === 'fortschritt') drawChart();
@@ -258,13 +271,20 @@ function render() {
 const tabOf = (v) => ({ katalog: 'katalog', uebung: 'katalog', plaene: 'plaene', plan: 'plaene', verlauf: 'verlauf', fortschritt: 'verlauf', einstellungen: 'einstellungen' })[v];
 
 // ── Katalog ───────────────────────────────────────────────
+// Art im Katalog: beim Hinzufügen bestimmt der Plan die Art, sonst der Umschalter (db.catKind)
+const catKindFor = (pickFor) => (pickFor ? kindOf(shownPlan(pickFor)) : db.catKind || 'kraft');
+const KINDS = [['kraft', 'Kraft'], ['dehnen', 'Dehnen']];
+
 function viewCatalog(pickFor) {
   const plan = pickFor && shownPlan(pickFor);
-  const head = plan ? header('Übungen hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
+  const kind = catKindFor(pickFor), st = kind === 'dehnen';
+  const head = plan ? header(st ? 'Dehnungen hinzufügen' : 'Übungen hinzufügen', [`#/plan/${plan.id}`, plan.name]) : header('Übungen');
   return `${head}
-    <input class="search" type="search" id="q" placeholder="Übung suchen" value="${esc(catQuery)}" autocomplete="off">
+    ${plan ? '' : `<div class="seg kind-seg" role="radiogroup" aria-label="Art der Übungen">${KINDS.map(([k, l]) =>
+      `<button class="${kind === k ? 'on' : ''}" data-act="cat-kind" data-kind="${k}" role="radio" aria-checked="${kind === k}">${l}</button>`).join('')}</div>`}
+    <input class="search" type="search" id="q" placeholder="${st ? 'Dehnung suchen' : 'Übung suchen'}" value="${esc(catQuery)}" autocomplete="off">
     <div class="chips scroll" role="group" aria-label="Filter">
-      <button class="chip filter" data-act="equip-sheet" aria-haspopup="dialog">${icon.dumbbell}Ausrüstung${db.equip.length ? ` <span class="cnt">${db.equip.length}</span>` : ''}</button>
+      ${st ? '' : `<button class="chip filter" data-act="equip-sheet" aria-haspopup="dialog">${icon.dumbbell}Ausrüstung${db.equip.length ? ` <span class="cnt">${db.equip.length}</span>` : ''}</button>`}
       ${[{ id: '', name: 'Alle' }, ...MUSCLE_GROUPS].map((g) => {
       const on = g.id ? db.muscles.includes(g.id) : !db.muscles.length;
       return `<button class="chip ${on ? 'on' : ''}" data-act="muscle" data-id="${g.id}" aria-pressed="${on}">${g.name}</button>`;
@@ -282,17 +302,19 @@ function viewCatalog(pickFor) {
 
 function renderCatalogList(pickFor) {
   const q = catQuery.trim().toLowerCase();
-  const list = EXERCISES.filter((ex) => ex.equip.every((e) => db.equip.includes(e)))
+  const st = catKindFor(pickFor) === 'dehnen';
+  const list = EXERCISES.filter((ex) => isStretch(ex) === st)
+    .filter((ex) => ex.equip.every((e) => db.equip.includes(e)))
     .filter((ex) => !db.muscles.length || ex.groups.some((g) => db.muscles.includes(g)))
     .filter((ex) => !q || (ex.name + ' ' + ex.muscles).toLowerCase().includes(q));
   const el = $('#list');
-  if (!list.length) { el.innerHTML = empty('Keine passende Übung.', 'Wähl mehr Ausrüstung, weitere Muskelgruppen oder ändere die Suche.'); return; }
+  if (!list.length) { el.innerHTML = empty(st ? 'Keine passende Dehnung.' : 'Keine passende Übung.', st ? 'Wähl weitere Muskelgruppen oder ändere die Suche.' : 'Wähl mehr Ausrüstung, weitere Muskelgruppen oder ändere die Suche.'); return; }
   el.innerHTML = list.map((ex) => {
     const sel = pickFor && pickSel.includes(ex.id);
     return lrow({ cls: sel ? 'sel' : '',
       tag: pickFor ? 'button' : 'a',
       attrs: pickFor ? `data-act="pick" data-ex="${ex.id}" aria-pressed="${sel}"` : `href="#/uebung/${ex.id}"`,
-      ic: circleFig(ex), title: esc(ex.name) + (ex.mode === 'time' ? `<span class="t-ic" aria-label="auf Zeit">${icon.rest}</span>` : ''),
+      ic: circleFig(ex, st ? 'rose' : ''), title: esc(ex.name) + (ex.mode === 'time' && !st ? `<span class="t-ic" aria-label="auf Zeit">${icon.rest}</span>` : ''),
       sub: esc(ex.muscles), right: pickFor ? `<span class="pick-ck">${sel ? icon.check : ''}</span>` : icon.chev });
   }).join('');
   if (pickFor) renderPickBar(pickFor);
@@ -314,12 +336,14 @@ function splitDesc(desc) {
 function viewExercise(id) {
   const ex = byId[id];
   if (!ex) return header('Übung') + empty('Diese Übung gibt es nicht (mehr).');
-  const last = lastFor(id);
+  const st = isStretch(ex), last = st ? null : lastFor(id);
   const { lead, points } = splitDesc(ex.desc);
+  const kindBadge = st ? (ex.side ? 'Halten · je Seite' : 'Halten') : ex.mode === 'time' ? 'Auf Zeit' : ex.side ? 'Wiederholungen je Seite' : 'Wiederholungen';
+  const plans = db.plans.filter((p) => isStretchPlan(p) === st);
   return header(ex.name, ['#/katalog', 'Übungen']) + `
-    <div class="fig-hero" data-anim="${ex.id}"></div>
-    <p class="overline">${esc(ex.muscles)}</p>
-    <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${ex.mode === 'time' ? 'Auf Zeit' : ex.side ? 'Wiederholungen je Seite' : 'Wiederholungen'}</span></div>
+    <div class="fig-hero ${st ? 'rose' : ''}" data-anim="${ex.id}"></div>
+    <p class="overline">${st ? 'Dehnen · ' : ''}${esc(ex.muscles)}</p>
+    <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${kindBadge}</span></div>
     <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(lead)}</p></div></div>
     ${points.length ? pill('Worauf ich achte') + `<ul class="checklist">${points.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
     ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
@@ -327,12 +351,13 @@ function viewExercise(id) {
     ${addSheet ? `<div class="sheet-bg" data-act="add-sheet-close"></div>
     <div class="sheet add-sheet" role="dialog" aria-label="Zu Plan hinzufügen">
       <p class="serif">${esc(ex.name)} hinzufügen zu …</p>
-      <div class="sheet-list">${db.plans.map((p) => {
+      <div class="sheet-list">${plans.map((p) => {
         const sp = shownPlan(p.id), n = planEstimate(sp).n;
         return `<button class="sheet-row" data-act="add-to-plan" data-plan="${p.id}" data-ex="${ex.id}">${planIc(sp, 'sm')}
-          <span><b>${esc(sp.name)}</b><small>${n} Übung${n === 1 ? '' : 'en'}${draftOf(p.id) ? ' · nicht gespeichert' : ''}</small></span>${icon.plus}</button>`;
+          <span><b>${esc(sp.name)}</b><small>${n} ${st ? `Dehnung${n === 1 ? '' : 'en'}` : `Übung${n === 1 ? '' : 'en'}`}${draftOf(p.id) ? ' · nicht gespeichert' : ''}</small></span>${icon.plus}</button>`;
       }).join('')}</div>
-      <button class="btn" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}Neuer Plan</button>
+      ${st && !plans.length ? '<p class="sheet-hint">Noch kein Dehnplan. Dehnungen und Kraftübungen stehen immer in getrennten Plänen.</p>' : ''}
+      <button class="btn" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}${st ? 'Neuer Dehnplan' : 'Neuer Plan'}</button>
       <button class="btn text" data-act="add-sheet-close">Abbrechen</button></div>` : ''}`;
 }
 
@@ -345,21 +370,45 @@ const lrow = ({ tag = 'a', attrs = '', ic = '', title, sub = '', right = icon.ch
 const catText = (name, label) => label && !name.toLowerCase().includes(label.toLowerCase()) ? `${label} · ` : '';
 
 // ── Pläne ─────────────────────────────────────────────────
+const PLAN_FILTERS = [['alle', 'Alle'], ['kraft', 'Kraft'], ['dehnen', 'Dehnen']];
+const planFilter = () => db.planFilter || 'alle';
+const matchesFilter = (p) => planFilter() === 'alle' || kindOf(p) === planFilter();
+
 function viewPlans() {
   const add = `<button class="icon-btn head-btn" data-act="new-plan" aria-label="Neuer Plan">${icon.plus}</button>`;
+  const f = planFilter(), plans = db.plans.filter(matchesFilter);
+  const chips = db.plans.length ? `<div class="chips plan-filter" role="radiogroup" aria-label="Pläne filtern">${PLAN_FILTERS.map(([k, l]) =>
+    `<button class="chip ${f === k ? 'on' : ''}" data-act="plan-filter" data-f="${k}" role="radio" aria-checked="${f === k}">${k === 'dehnen' ? icon.stretch : ''}${l}</button>`).join('')}</div>` : '';
   const top = !db.plans.length
     ? empty('Noch kein Training geplant.', 'Starte mit deinem Körper, nicht gegen ihn – mit einer Vorlage oder einem eigenen Plan.',
       `<button class="btn primary" data-act="new-plan">${icon.plus}Eigenen Plan anlegen</button>`)
-    : `<div class="lgroup">${db.plans.map((p) => {
+    : !plans.length && f === 'dehnen'
+      ? `<div class="empty small"><p>Noch kein eigener Dehnplan. Nach jedem Krafttraining bekommst du passende Dehnungen trotzdem angeboten.</p>
+        <button class="btn" data-act="new-plan">${icon.plus}Dehnplan anlegen</button></div>`
+      : !plans.length ? `<div class="empty small"><p>Noch kein Kraftplan.</p><button class="btn" data-act="new-plan">${icon.plus}Kraftplan anlegen</button></div>`
+      : `<div class="lgroup">${plans.map((p) => {
       const est = planEstimate(p);
       const ic = `<span class="ic-wrap">${planIc(p)}${draftOf(p.id) ? '<i class="draft-dot" aria-label="Nicht gespeicherte Änderungen"></i>' : ''}</span>`;
       return lrow({ attrs: `href="#/plan/${p.id}"`, ic, title: esc(p.name), sub: catText(p.name, planLabel(p)) + planMeta(est), right: '',
         after: `<button class="play-btn" data-act="start" data-plan="${p.id}" ${est.n ? '' : 'disabled'} aria-label="${esc(p.name)} starten">${icon.play}</button>` });
     }).join('')}</div>`;
-  return header('Pläne', null, add) + top + templatesBlock() + (tplSheet ? templateSheet(tplSheet) : '');
+  return header('Pläne', null, add) + chips + top + templatesBlock() + (tplSheet ? templateSheet(tplSheet) : '') + (newSheet ? newPlanSheet() : '');
+}
+
+// „+“ bei Filter „Alle“: Art wählen. Bei Filter Kraft/Dehnen wird direkt ein Plan dieser Art angelegt.
+function newPlanSheet() {
+  return `<div class="sheet-bg" data-act="new-close"></div>
+    <div class="sheet menu-sheet" role="dialog" aria-label="Neuer Plan">
+      <p class="serif">Neuer Plan</p>
+      <div class="sheet-list">
+        <button class="sheet-row" data-act="new-plan-kind" data-kind="kraft">${planIconHTML('Kraft', [], 'sm')}<span><b>Kraftplan</b><small>Übungen mit Sätzen, Supersets und Pausen</small></span>${icon.chev}</button>
+        <button class="sheet-row" data-act="new-plan-kind" data-kind="dehnen">${planIconHTML('', [], 'sm', 'stretch')}<span><b>Dehnplan</b><small>Dehnungen zum Halten, ohne Verlauf</small></span>${icon.chev}</button>
+      </div>
+      <button class="btn text" data-act="new-close">Abbrechen</button></div>`;
 }
 
 const tplEquip = (exs) => {
+  if (exs.length && exs.every((x) => isStretch(byId[x.exId]))) return 'Dehnen';
   const e = [...new Set(exs.flatMap((x) => byId[x.exId].equip))].map((id) => EQUIPMENT.find((q) => q.id === id).name);
   return e.length ? e.join(', ') : 'Ohne Geräte';
 };
@@ -367,12 +416,13 @@ const tplEquip = (exs) => {
 // Vorlagen: dieselben Zeilen ohne Knopf, Antippen öffnet die Vorschau (js/templates.js)
 function templatesBlock() {
   const open = showTpl ?? !db.plans.length;
-  const head = `<div class="sec-head">${pill('Vorlagen')}<button class="link" data-act="tpl-toggle" aria-expanded="${open}">${open ? 'Einklappen' : more(`${TEMPLATES.length} Beispielpläne`)}</button></div>`;
+  const tpls = TEMPLATES.filter(matchesFilter);
+  const head = `<div class="sec-head">${pill('Vorlagen')}<button class="link" data-act="tpl-toggle" aria-expanded="${open}">${open ? 'Einklappen' : more(`${tpls.length} Beispielpläne`)}</button></div>`;
   if (!open) return head;
-  return head + `<div class="lgroup">${TEMPLATES.map((t) => {
+  return head + `<div class="lgroup">${tpls.map((t) => {
     const exs = planExercises(t), est = planEstimate(t);
     const taken = db.plans.some((p) => p.tpl === t.id);
-    return lrow({ tag: 'button', attrs: `data-act="tpl-open" data-tpl="${t.id}"`, ic: planIconHTML(t.name, exs), title: esc(t.name),
+    return lrow({ tag: 'button', attrs: `data-act="tpl-open" data-tpl="${t.id}"`, ic: planIconHTML(t.name, exs, '', t.kind), title: esc(t.name),
       sub: `${tplEquip(exs)} · ca. ${fmtDur(est.s)}`, right: taken ? `<span class="taken" aria-label="Schon in deinen Plänen">${icon.check}</span>` : icon.chev });
   }).join('')}</div>`;
 }
@@ -384,7 +434,7 @@ function templateSheet(id) {
   const rows = PE.flatten(t.items).map(({ it, label }) => `<div class="li"><span>${label ? `<span class="tag-l">${label}</span> ` : ''}${esc(byId[it.exId].name)}</span><small>${exSummary(it, !!label).replace(/ · Pause \d+ s$/, '')}</small></div>`).join('');
   return `<div class="sheet-bg" data-act="tpl-close"></div>
     <div class="sheet tpl-sheet" role="dialog" aria-label="Vorlage ${esc(t.name)}">
-      <div class="tpl-top">${planIconHTML(t.name, exs)}<div><p class="serif">${esc(t.name)}</p><small>${planMeta(est)} · ${tplEquip(exs)}</small></div></div>
+      <div class="tpl-top">${planIconHTML(t.name, exs, '', t.kind)}<div><p class="serif">${esc(t.name)}</p><small>${planMeta(est)} · ${tplEquip(exs)}</small></div></div>
       <p class="sheet-hint">${esc(t.note)}</p>
       <div class="listbox">${rows}</div>
       ${taken ? `<p class="sheet-hint ok">${icon.check}Schon in deinen Plänen</p>` : ''}
@@ -397,17 +447,17 @@ function viewPlanEditor(id) {
   if (!p) return header('Plan', ['#/plaene', 'Pläne']) + empty('Diesen Plan gibt es nicht (mehr).');
   const est = planEstimate(p), dirty = !!draftOf(id);
   const list = p.items.map((it) => it.type === 'group' ? groupBlock(p, it) : it.type === 'rest' ? restRow(it) : exRow(p, it, null)).join('');
-  const tip = p.items.length && !db.hints?.drag;
+  const tip = p.items.length && !db.hints?.drag, st = isStretchPlan(p);
   return `<header class="app-head"><a class="back" href="#/plaene">${icon.back}Pläne</a>
       <div class="head-row"><input class="title-input" data-plan-name="${p.id}" value="${esc(p.name)}" aria-label="Name des Plans">
       <button class="icon-btn head-btn" data-act="plan-menu" aria-label="Weitere Aktionen">${icon.dots}</button></div></header>
     <div class="sub plan-sub" id="plan-meta">${planIc(p, 'xs')}<span>${catText(p.name, planLabel(p))}${planMeta(est)}${dirty ? ' · <span class="dirty">nicht gespeichert</span>' : ''}</span></div>
-    ${tip ? `<div class="hint-tip">${icon.bulb}<span>Am Griff ziehen zum Sortieren. Auf eine Übung ziehen und kurz halten bildet ein Superset.</span>
+    ${tip ? `<div class="hint-tip">${icon.bulb}<span>${st ? 'Am Griff ziehen zum Sortieren.' : 'Am Griff ziehen zum Sortieren. Auf eine Übung ziehen und kurz halten bildet ein Superset.'}</span>
       <button class="tip-x" data-act="hint-off" aria-label="Tipp schließen">${icon.x}</button></div>` : ''}
-    <div class="plist" id="plan-list" data-plan="${p.id}">${list || '<p class="hint">Noch leer. Füg Übungen und Pausen hinzu.</p>'}</div>
+    <div class="plist" id="plan-list" data-plan="${p.id}" ${st ? 'data-nomerge' : ''}>${list || `<p class="hint">${st ? 'Noch leer. Füg Dehnungen hinzu.' : 'Noch leer. Füg Übungen und Pausen hinzu.'}</p>`}</div>
     <div class="row">
-      <a class="btn" href="#/plan/${p.id}/add">${icon.plus}Übung</a>
-      <button class="btn" data-act="add-rest" data-plan="${p.id}">${icon.plus}Pause</button>
+      <a class="btn" href="#/plan/${p.id}/add">${icon.plus}${st ? 'Dehnung' : 'Übung'}</a>
+      ${st ? '' : `<button class="btn" data-act="add-rest" data-plan="${p.id}">${icon.plus}Pause</button>`}
     </div>
     ${editorBar(p.id, dirty, est.n)}
     ${planMenu ? planMenuSheet(p, dirty) : ''}
@@ -449,6 +499,7 @@ function startAskSheet(id) {
 const grip = `<button class="handle" data-handle aria-label="Ziehen zum Verschieben">${icon.grip}</button>`;
 const exSummary = (it, inGroup) => {
   const v = amountTxt(it);
+  if (isStretch(byId[it.exId])) return `${it.sets > 1 ? `${it.sets} × ` : ''}${v}`;
   const w = it.weight ? ` · ${fmtNum(it.weight)} kg` : '';
   return inGroup ? v + w : `${it.sets} × ${v}${w} · Pause ${it.rest} s`;
 };
@@ -458,7 +509,7 @@ function exRow(p, it, group, idx) {
   const label = group ? `<span class="tag-l">${PE.letterOf(p.items, group.id)}${idx + 1}</span>` : '';
   const open = planOpen === it.id;
   return `<div class="prow ${open ? 'open' : ''}" data-id="${it.id}" data-kind="${group ? 'member' : 'ex'}">
-    <div class="prow-main" data-act="ptoggle" role="button" aria-expanded="${open}">${circleFig(ex, 'sm')}
+    <div class="prow-main" data-act="ptoggle" role="button" aria-expanded="${open}">${circleFig(ex, isStretch(ex) ? 'sm rose' : 'sm')}
       <div class="prow-txt"><b><span>${esc(ex.name)}</span></b><small>${label}${exSummary(it, !!group)}</small></div>${grip}</div>
     ${open ? planFields(it, group ? 'member' : 'ex') : ''}</div>`;
 }
@@ -492,7 +543,9 @@ function planFields(it, kind) {
   let h = '';
   if (kind === 'rest') h = pStepper('dur', 'Dauer (s)', it.dur, 15, 's');
   else if (kind === 'group') h = pStepper('rounds', 'Runden', it.rounds, 1) + pStepper('rest', 'Pause nach Runde (s)', it.rest, 15, 's');
-  else {
+  else if (isStretch(byId[it.exId])) {
+    h = pStepper('dur', byId[it.exId].side ? 'Haltezeit je Seite (s)' : 'Haltezeit (s)', it.dur, 5, 's') + pStepper('sets', 'Durchgänge', it.sets, 1);
+  } else {
     h = `<div class="seg"><button class="${it.mode === 'reps' ? 'on' : ''}" data-act="pmode" data-mode="reps">Wiederholungen</button><button class="${it.mode === 'time' ? 'on' : ''}" data-act="pmode" data-mode="time">Dauer</button></div>`;
     if (kind === 'ex') h += pStepper('sets', 'Sätze', it.sets, 1);
     h += it.mode === 'reps' ? pStepper('reps', 'Wiederholungen', it.reps, 1) : pStepper('dur', 'Dauer (s)', it.dur, 5, 's');
@@ -511,7 +564,7 @@ function planFields(it, kind) {
 // Superset: Runde für Runde alle Übungen nacheinander, Pause erst nach der Runde.
 function buildSteps(items) {
   const steps = [];
-  let letter = 0;
+  let letter = 0, no = 0;
   for (const it of items) {
     if (it.type === 'rest') { if (it.dur > 0) steps.push({ k: 'rest', dur: it.dur }); continue; }
     if (it.type === 'group') {
@@ -520,6 +573,12 @@ function buildSteps(items) {
         it.items.forEach((m, i) => steps.push({ k: 'work', item: m.id, set: r, of: it.rounds, ss: `${L}${i + 1}` }));
         if (r < it.rounds - 1 && it.rest > 0) steps.push({ k: 'rest', dur: it.rest });
       }
+      continue;
+    }
+    if (isStretch(byId[it.exId])) {
+      no++;
+      const sides = byId[it.exId].side ? ['r', 'l'] : [null];
+      for (let s = 0; s < it.sets; s++) for (const side of sides) steps.push({ k: 'work', item: it.id, set: s, side, no });
       continue;
     }
     for (let s = 0; s < it.sets; s++) {
@@ -539,9 +598,28 @@ function startTraining(planId, useDraft = false) {
   const tempDraft = useDraft && !!draftOf(planId);
   const items = JSON.parse(JSON.stringify(p.items));
   db.active = { planId, tempDraft, planName: p.name, startedAt: Date.now(), items, steps: buildSteps(items), idx: 0, log: {}, timer: null, cur: null };
+  if (isStretchPlan(p)) { db.active.stretch = true; db.active.nStretch = planEstimate(p).n; db.active.done = 0; }
   T.unlockAudio();
-  enterStep(!!db.autopilot);
+  enterStep(!!db.autopilot || !!db.active.stretch);
   go('training');
+}
+
+// Automatischer Dehnplan nach einem Krafttraining. done: [{ exId, sets }]; after: Verlaufs-ID zum Zurückkehren
+const stretchSize = () => STRETCH_SIZES.find((x) => x.id === db.stretchSize) || STRETCH_SIZES[1];
+function autoStretch(done) {
+  const { exs, focus, std } = pickStretches(done, stretchSize().n, db.stretchRot || 0);
+  const items = stretchItems(exs, db.stretchHold ?? 30, uid);
+  return { items, focus, std, secs: items.reduce((a, it) => a + stretchSecs(it), 0) };
+}
+function startStretch(done, { after = null, lead = SWITCH } = {}) {
+  const { items } = autoStretch(done);
+  db.stretchRot = (db.stretchRot || 0) + 1; // nächstes Mal andere Übungen im Standard-Set
+  db.active = { planId: null, planName: 'Dehnen zum Abschluss', startedAt: Date.now(), items, steps: buildSteps(items), idx: 0, log: {},
+    timer: null, cur: null, stretch: true, auto: true, after, lead, nStretch: items.length, done: 0 };
+  stretchAsk = null;
+  T.unlockAudio();
+  enterStep(true);
+  if (route()[0] === 'training') render(); else go('training'); // aus dem Abschluss heraus: gleiche Adresse
 }
 
 function itemOf(step) { return PE.find(db.active.items, step.item)?.it; }
@@ -555,6 +633,13 @@ function enterStep(autoStart) {
       // Die Pause läuft immer von selbst – Start/Pause/Stop gibt es dort nicht
       A.timer = T.makeTimer(step.dur);
       T.start(A.timer);
+    } else if (A.stretch) {
+      const it = itemOf(step);
+      const setup = A.idx === 0 ? (A.lead ?? SWITCH) : SWITCH;
+      A.cur = {};
+      A.timer = T.makeTimer(setup + it.dur);
+      A.timer.setup = setup;
+      if (autoStart) T.start(A.timer);
     } else {
       const it = itemOf(step);
       const prev = A.log[it.id]?.[step.set] || A.log[it.id]?.[step.set - 1];
@@ -599,16 +684,18 @@ function trScreen({ kind, hero, title, sub, card1, card2, main, next }) {
   const A = db.active;
   const pct = Math.round((Math.min(A.idx, A.steps.length) / A.steps.length) * 100);
   const prevB = (cls) => `<button class="${cls}" data-act="prev" ${A.idx === 0 ? 'disabled' : ''} aria-label="Zurück">${icon.back}</button>`;
-  const skipL = kind === 'rest' ? 'Pause überspringen' : 'Satz überspringen (wird nicht gespeichert)';
+  const skipL = kind === 'rest' ? 'Pause überspringen' : A.stretch ? 'Dehnung überspringen' : 'Satz überspringen (wird nicht gespeichert)';
   const skipB = (cls) => `<button class="${cls}" data-act="skip" ${kind === 'done' ? 'disabled' : ''} aria-label="${skipL}">${icon.chev}</button>`;
   // Zurück und Überspringen links und rechts neben der Hauptaktion. In der Pause wird die Hauptaktion breiter (kein doppelter Knopf).
   const counter = `<div class="tr-title"><b>${esc(A.planName)}</b><small>${Math.min(A.idx + 1, A.steps.length)} / ${A.steps.length}</small></div>`;
-  const right = kind === 'rest' ? '' : kind === 'done'
+  // Dehnung: „Weiter“ speichert nichts – wie in der Pause nimmt die Hauptaktion den Platz von Überspringen ein
+  const wide = kind === 'rest' || (kind === 'work' && A.stretch);
+  const right = wide ? '' : kind === 'done' && !A.stretch
     ? `<button class="icon-btn side danger" data-act="discard" aria-label="Training verwerfen">${icon.trash}</button>` : skipB('icon-btn side');
-  const mainRow = `<div class="tr-mainrow ${kind === 'rest' ? 'wide' : ''}">${prevB('icon-btn side')}${main}${right}</div>`;
+  const mainRow = `<div class="tr-mainrow ${wide ? 'wide' : ''}">${prevB('icon-btn side')}${main}${right}</div>`;
   return `<section class="tr-screen">
     <header class="tr-top">
-      <button class="icon-btn" data-act="exit" aria-label="Training beenden">${icon.del}</button>
+      <button class="icon-btn" data-act="exit" aria-label="${A.stretch ? 'Dehnen beenden' : 'Training beenden'}">${icon.del}</button>
       ${counter}
       <button class="icon-btn" data-act="sound" aria-label="Ton ${db.sound ? 'aus' : 'an'}schalten">${db.sound ? icon.bell : icon.bellOff}</button>
     </header>
@@ -630,7 +717,8 @@ function viewTraining() {
       <button class="btn" data-act="exit-cancel">Weiter trainieren</button>
       <button class="btn text danger-text" data-act="discard">Verwerfen</button></div>` : '';
 
-  if (!step) return viewSummary() + sheet;
+  if (!step) return (A.stretch ? viewStretchSummary() : viewSummary()) + sheet;
+  if (A.stretch) return viewStretchStep(step);
 
   if (step.k === 'rest') {
     return trScreen({
@@ -659,6 +747,50 @@ function viewTraining() {
     main: trMain('done', 'Satz erledigt', icon.check),
     next: nextCard(),
   }) + sheet;
+}
+
+// Dehnung: Ring zählt erst das Einnehmen (Vorlauf), dann die Haltezeit. Karte 2 = Haltezeit ±5 s.
+const sideTxt = (st) => (st.side === 'r' ? 'Rechte Seite' : st.side === 'l' ? 'Linke Seite' : '');
+function viewStretchStep(step) {
+  const A = db.active, it = itemOf(step), ex = byId[it.exId];
+  const parts = [sideTxt(step), `Dehnung ${step.no} von ${A.nStretch}`];
+  if (it.sets > 1) parts.push(`Durchgang ${step.set + 1} von ${it.sets}`);
+  return trScreen({
+    hero: `<div class="fig-tr rose timed"><div class="fig-anim" data-anim="${ex.id}"></div>${figRing()}</div>`,
+    title: esc(ex.name),
+    sub: parts.filter(Boolean).join(' · '),
+    card1: timerCard(),
+    card2: `<div class="stepper-wrap"><span>Haltezeit${ex.side ? ' je Seite' : ''}</span><div class="stepper">
+      <button data-act="hold" data-d="-5" aria-label="5 Sekunden kürzer">−5</button>
+      <output class="t-val">${it.dur}<i> s</i></output>
+      <button data-act="hold" data-d="5" aria-label="5 Sekunden länger">+5</button></div></div>`,
+    kind: 'work',
+    main: trMain('done', 'Weiter', '', false, icon.chev),
+    next: nextCard(),
+  });
+}
+
+function viewStretchSummary() {
+  const A = db.active;
+  const stat = (label, val) => `<div class="stepper-wrap"><span>${label}</span><div class="stepper"><output class="t-val">${val}</output></div></div>`;
+  return trScreen({
+    hero: `<div class="fig-tr rose"><div class="fig-icon leaf-icon">${LEAF}</div></div>`,
+    title: pickText(STRETCH_DONE_TITLES, 5),
+    sub: `${fmtDur((Date.now() - A.startedAt) / 1000)} · ${A.nStretch} Dehnung${A.nStretch === 1 ? '' : 'en'}`,
+    card1: stat('Gehalten', A.done || 0),
+    card2: stat('Zeit', T.fmt((Date.now() - A.startedAt) / 1000)),
+    kind: 'done',
+    main: trMain('stretch-end', 'Fertig', icon.check),
+    next: `<div class="next-card quote">${pickText(STRETCH_LINES, 6)}</div>`,
+  });
+}
+
+// Dehnen endet ohne Verlaufseintrag – zurück zum Training davor (Verlauf) bzw. zu den Plänen
+function endStretch() {
+  const A = db.active;
+  dropTempDraft(A);
+  db.active = null; exitSheet = false; save();
+  go(A?.after ? 'verlauf/' + A.after : 'plaene');
 }
 
 // Pause: −15 s / +15 s an der Stelle von − / +
@@ -700,9 +832,12 @@ function nextCard() {
   else {
     const it = itemOf(nx), ex = byId[it.exId];
     if (cur.k === 'work' && cur.ss && nx.ss && nx.set === cur.set) over = 'Danach direkt';
-    ic = circleFig(ex, 'sm');
+    ic = circleFig(ex, isStretch(ex) ? 'sm rose' : 'sm');
     title = `${nx.ss ? `<span class="tag-l">${nx.ss}</span> ` : ''}${esc(ex.name)}`;
-    sub = `${nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`} · ${amountTxt(it)}${it.weight ? ` · ${fmtNum(it.weight)} kg` : ''}`;
+    if (isStretch(ex)) {
+      if (cur.k === 'work' && cur.item === nx.item) over = 'Danach';
+      sub = [sideTxt(nx), `${it.dur} s`].filter(Boolean).join(' · ');
+    } else sub = `${nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`} · ${amountTxt(it)}${it.weight ? ` · ${fmtNum(it.weight)} kg` : ''}`;
   }
   return `<div class="next-card">${ic}<div class="next-txt"><small class="next-over">${over}</small><b>${title}</b><small>${sub}</small></div></div>`;
 }
@@ -721,6 +856,11 @@ function trainingPhase(exId) {
   const t = db.active?.timer;
   if (!t) return null;
   const z = timerState(t);
+  // Dehnung: während „Einnehmen“ in die Pose bewegen, dann halten (Katze-Kuh wechselt weiter im Atemrhythmus)
+  if (db.active.stretch && !byId[exId]?.dynamic) {
+    if (z.setupLeft > 0) return t.running ? 0.12 + (1 - z.setupLeft / t.setup) * 0.38 : null;
+    return 0.5;
+  }
   if (z.setupLeft > 0 || (!t.running && z.wr >= z.work)) return null;
   const tempo = t.tempo || tempoOf(exId);
   return ((z.work - z.wr) % tempo) / tempo;
@@ -735,7 +875,7 @@ function timerState(t) {
     setupLeft: Math.max(0, r - work),
     frac: work > 0 ? wr / work : 0,
     value: t.reps ? String(Math.min(t.reps, Math.ceil(wr / t.tempo))) : T.fmt(wr),
-    label: r - work > 0.05 ? `Los in ${Math.ceil(r - work)} s` : t.reps ? 'Wiederholungen' : 'Zeit',
+    label: r - work > 0.05 ? `${db.active?.stretch ? 'Einnehmen' : 'Los in'} ${Math.ceil(r - work)} s` : t.reps ? 'Wiederholungen' : db.active?.stretch ? 'Halten' : 'Zeit',
   };
 }
 function figRing() {
@@ -779,7 +919,8 @@ function startTicker() {
     if (r <= 0) {
       T.pause(t); T.beep('end');
       const step = A.steps[A.idx];
-      if (step.k === 'work') t.reps ? logSet() : logSet(z.work);
+      if (step.k === 'work' && A.stretch) A.done = (A.done || 0) + 1;
+      else if (step.k === 'work') t.reps ? logSet() : logSet(z.work);
       nextStep();
     }
   };
@@ -807,20 +948,45 @@ function viewSummary() {
   });
 }
 
+// ── Dehnen nach dem Krafttraining ──
+const offerOn = () => db.stretchOffer !== false;
+// Grundlage: tatsächlich trainierte Übungen mit Anzahl Sätze
+const offerDone = () => (db.active ? activeExercises().map(({ it }) => ({ exId: it.exId, sets: db.active.log[it.id].filter(Boolean).length })) : []);
+
+// Rückfrage nach dem Speichern (Variante A, entschieden 2026-11-22)
+function stretchAskSheet() {
+  const o = autoStretch(stretchAsk.done);
+  return `<div class="sheet-bg" data-act="stretch-skip"></div>
+    <div class="sheet stretch-sheet" role="dialog" aria-label="Passende Dehnungen zum Abschluss">
+      <div class="tpl-top">${planIconHTML('', [], '', 'stretch')}<div><p class="serif">Passende Dehnungen zum Abschluss?</p>
+        <small>${o.focus.length ? `Für ${o.focus.join(', ')}` : 'Zum Lockern nach dem Training'}</small></div></div>
+      ${(() => { const nm = (f) => o.items.filter(f).map((it) => esc(byId[it.exId].name)).join(' · ');
+        const g = nm((it) => !o.std.includes(it.exId)), st = nm((it) => o.std.includes(it.exId));
+        return `${g ? `<p class="sheet-hint"><b>Gezielt:</b> ${g}</p>` : ''}<p class="sheet-hint"><b>Standard:</b> ${st}</p>`; })()}
+      <div class="seg seg3" role="radiogroup" aria-label="Umfang">${STRETCH_SIZES.map((z) =>
+        `<button class="${stretchSize().id === z.id ? 'on' : ''}" data-act="stretch-size" data-size="${z.id}" role="radio" aria-checked="${stretchSize().id === z.id}">${z.name}</button>`).join('')}</div>
+      <button class="btn primary big" data-act="stretch-start">${icon.play}Dehnen starten · ca. ${fmtDur(o.secs)}</button>
+      <button class="btn" data-act="stretch-skip">Überspringen</button></div>`;
+}
+
 // Nach „Ohne Speichern starten“: Entwurf beim Ende des Trainings verwerfen
 function dropTempDraft(A) { if (A?.tempDraft && db.drafts) delete db.drafts[A.planId]; }
 
 function finishTraining() {
   const A = db.active;
+  if (A.stretch) { endStretch(); return; }
   dropTempDraft(A);
   const items = activeExercises().map(({ it: i, label }) => ({ exId: i.exId, mode: i.mode, sets: A.log[i.id].filter(Boolean), ...(label ? { ss: label } : {}) }));
   if (items.length) {
+    const done = offerDone();
     const s = { id: uid(), date: A.startedAt, end: Date.now(), planId: A.planId, planName: A.planName, items };
     db.history.push(s);
+    const after = s.id;
     const msg = pickText(SAVE_TOASTS, 4); // vor dem Schließen wählen – braucht die Startzeit des Trainings
     db.active = null; exitSheet = false; save();
     toast(msg);
-    go('verlauf/' + s.id);
+    if (offerOn() && done.length) stretchAsk = { done, after };
+    go('verlauf/' + after);
   } else {
     db.active = null; exitSheet = false; save();
     toast('Nichts erfasst – nicht gespeichert');
@@ -919,7 +1085,7 @@ function viewTempo() {
       <button data-act="setup" data-d="1" aria-label="Vorlauf länger">+</button></div></div>
     <p class="hint">Gilt z. B. beim Wechsel im Superset oder am Trainingsbeginn. Nach einer Pause geht es direkt los – die endet schon mit 3-2-1.</p>
     ${pill('Sekunden pro Wiederholung')}
-    <div class="plist">${EXERCISES.map(row).join('')}</div>
+    <div class="plist">${STRENGTH.map(row).join('')}</div>
     ${custom ? `<button class="btn text big" data-act="tempo-reset">Alle auf Schätzung zurücksetzen</button>` : ''}`;
 }
 
@@ -940,6 +1106,18 @@ function viewSettings() {
       <label class="li"><span>Ton beim Timer</span>${sw('sound-cb', db.sound, 'Ton beim Timer')}</label>
       <label class="li"><span>Autopilot<small>Auch Wiederholungen zählen herunter und es geht automatisch weiter.</small></span>${sw('autopilot-cb', db.autopilot, 'Autopilot')}</label>
       <a class="li indent ${db.autopilot ? '' : 'off'}" href="#/einstellungen/zeiten"><span>Zeiten für den Autopilot</span><small class="val">${fmtNum(db.setup ?? 5)} s Vorlauf</small>${icon.chev}</a>
+    </div>
+    ${pill('Dehnen')}
+    <div class="listbox">
+      <label class="li"><span>Dehnen nach dem Training anbieten<small>Passend zu den Muskeln, die du trainiert hast. Lässt sich jedes Mal überspringen.</small></span>${sw('stretch-offer-cb', offerOn(), 'Dehnen nach dem Training anbieten')}</label>
+    </div>
+    <div class="stretch-opts ${offerOn() ? '' : 'off'}">
+      <div class="stepper-wrap"><span>Haltezeit je Dehnung</span><div class="stepper">
+        <button data-act="hold-set" data-d="-5" aria-label="Haltezeit kürzer">−</button><output class="t-val">${db.stretchHold ?? 30}<i> s</i></output>
+        <button data-act="hold-set" data-d="5" aria-label="Haltezeit länger">+</button></div></div>
+      <div class="seg seg3" role="radiogroup" aria-label="Umfang">${STRETCH_SIZES.map((z) =>
+        `<button class="${stretchSize().id === z.id ? 'on' : ''}" data-act="stretch-size" data-size="${z.id}" role="radio" aria-checked="${stretchSize().id === z.id}">${z.name}</button>`).join('')}</div>
+      <p class="hint">${stretchSize().name}: ${stretchSize().n} Dehnungen, zusammen ca. ${fmtDur(stretchSize().n * 1.5 * ((db.stretchHold ?? 30) + SWITCH))}. Die Haltezeit gilt auch für neue Dehnungen in eigenen Plänen.</p>
     </div>
     ${pill('Daten')}
     <div class="listbox">
@@ -1079,6 +1257,22 @@ document.addEventListener('click', (ev) => {
       break;
     }
     case 'equip-sheet': equipSheet = true; render(); break;
+    case 'cat-kind': db.catKind = btn.dataset.kind; catQuery = ''; save(); render(); break;
+    case 'plan-filter': db.planFilter = btn.dataset.f; save(); render(); break;
+    case 'new-close': newSheet = false; render(); break;
+    case 'new-plan-kind': newSheet = false; createPlan(btn.dataset.kind); break;
+    case 'hold': {
+      // Haltezeit der laufenden Dehnung ±5 s (gilt auch für die andere Seite)
+      const it = itemOf(A.steps[A.idx]), d = +btn.dataset.d;
+      const v = Math.min(HOLD_MAX * 2, Math.max(10, it.dur + d));
+      if (v !== it.dur) { T.addTime(A.timer, v - it.dur); it.dur = v; }
+      save(); render(); break;
+    }
+    case 'hold-set': db.stretchHold = Math.min(HOLD_MAX, Math.max(HOLD_MIN, (db.stretchHold ?? 30) + +btn.dataset.d)); save(); render(); break;
+    case 'stretch-size': db.stretchSize = btn.dataset.size; save(); render(); break;
+    case 'stretch-start': startStretch(stretchAsk.done, { after: stretchAsk.after }); break;
+    case 'stretch-skip': stretchAsk = null; render(); break;
+    case 'stretch-end': endStretch(); break;
     case 'equip-sheet-close': equipSheet = false; render(); break;
     case 'muscle': {
       // Mehrfachauswahl: Gruppen an-/abwählen, „Alle“ hebt die Auswahl auf
@@ -1121,7 +1315,8 @@ document.addEventListener('click', (ev) => {
     }
     case 'add-to-new': {
       addSheet = false;
-      const p = { id: uid(), name: 'Neuer Plan', items: [newItem(btn.dataset.ex)] };
+      const st = isStretch(byId[btn.dataset.ex]);
+      const p = { id: uid(), name: st ? 'Neuer Dehnplan' : 'Neuer Plan', ...(st ? { kind: 'stretch' } : {}), items: [newItem(btn.dataset.ex)] };
       db.plans.push(p); save(); go('plan/' + p.id);
       break;
     }
@@ -1139,16 +1334,14 @@ document.addEventListener('click', (ev) => {
       const items = JSON.parse(JSON.stringify(t.items));
       PE.reId(items, uid);
       const n = db.plans.filter((p) => p.tpl === t.id).length;
-      db.plans.push({ id: uid(), tpl: t.id, name: n ? `${t.name} (${n + 1})` : t.name, items });
+      db.plans.push({ id: uid(), tpl: t.id, name: n ? `${t.name} (${n + 1})` : t.name, ...(t.kind ? { kind: t.kind } : {}), items });
       showTpl = true; tplSheet = null; // offen lassen, falls weitere Vorlagen übernommen werden sollen
       save(); toast(`„${t.name}“ ist jetzt in deinen Plänen`); render();
       break;
     }
-    case 'new-plan': {
-      const p = { id: uid(), name: 'Neuer Plan', items: [] };
-      db.plans.push(p); save(); go('plan/' + p.id);
+    case 'new-plan':
+      if (planFilter() === 'alle') { newSheet = true; render(); } else createPlan(planFilter());
       break;
-    }
     case 'dup-plan': {
       // Kopiert, was im Editor zu sehen ist (inkl. Entwurf), und öffnet die Kopie
       const src = planById(btn.dataset.plan), shown = shownPlan(src.id);
@@ -1209,6 +1402,7 @@ document.addEventListener('click', (ev) => {
     }
     case 'done': {
       const step = A.steps[A.idx];
+      if (A.stretch) { if (A.timer) T.pause(A.timer); A.done = (A.done || 0) + 1; T.unlockAudio(); nextStep(); break; }
       if (itemOf(step).mode === 'time') {
         const t = A.timer; T.pause(t);
         const z = timerState(t), el = z.work - z.wr;
@@ -1234,7 +1428,7 @@ document.addEventListener('click', (ev) => {
     case 't-stop': T.reset(A.timer); lastBeep = null; save(); render(); break;
     case 't-add': T.addTime(A.timer, +btn.dataset.s); save(); break;
     case 'sound': db.sound = !db.sound; T.setSound(db.sound); save(); render(); break;
-    case 'exit': exitSheet = true; render(); break;
+    case 'exit': if (A?.stretch) endStretch(); else { exitSheet = true; render(); } break;
     case 'exit-cancel': exitSheet = false; render(); break;
     case 'finish': finishTraining(); break;
     case 'discard':
@@ -1296,6 +1490,8 @@ document.addEventListener('change', (ev) => {
     const v = num(t.value);
     db.active.cur[t.dataset.cur] = t.dataset.cur === 'weight' ? (v && v > 0 ? v : null) : Math.max(0, v ?? 0);
     save();
+  } else if (t.dataset.act === 'stretch-offer-cb') {
+    db.stretchOffer = t.checked; save(); render();
   } else if (t.dataset.act === 'sound-cb') {
     db.sound = t.checked; T.setSound(db.sound); save();
   } else if (t.dataset.act === 'autopilot-cb') {
@@ -1325,6 +1521,12 @@ PE.initDrag((srcId, targetId, pos) => {
   if (pos === 'merge') toast('Superset gebildet');
   else if (before && !PE.find(p.items, srcId)?.parent) toast('Aus Superset gelöst');
 });
+
+function createPlan(kind) {
+  const st = kind === 'dehnen';
+  const p = { id: uid(), name: st ? 'Neuer Dehnplan' : 'Neuer Plan', ...(st ? { kind: 'stretch' } : {}), items: [] };
+  db.plans.push(p); save(); go('plan/' + p.id);
+}
 
 // Service Worker: Updates ohne HTTP-Cache prüfen, neue Version sofort übernehmen.
 let swReg = null;

@@ -58,3 +58,18 @@ export const SAVE_TOASTS = [
   'Training gespeichert. Gut gemacht 🤎',
   'Gespeichert. Dein Fortschritt wächst 💪🏼',
 ];
+
+// Dehnen – Titel der Abschluss-Seite (max. 15 Zeichen) und Merksatz (max. 70 Zeichen)
+export const STRETCH_DONE_TITLES = [
+  'Gut gedehnt!',
+  'Schön gelöst!',
+  'Durchatmen.',
+  'Gut für dich!',
+];
+export const STRETCH_LINES = [
+  'Regeneration ist kein Trainingsausfall. Sie ist Teil des Trainings.',
+  'Trainiere mit deinem Körper, nicht gegen ihn.',
+  'Beweglichkeit wächst mit Geduld.',
+  'Locker lassen ist auch eine Stärke.',
+  'Dein Körper sagt danke.',
+];
