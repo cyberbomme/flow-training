@@ -311,6 +311,22 @@ function splitDesc(desc) {
   return { lead: s[0], points: s.slice(1) };
 }
 
+// Tempo je Übung (Sekunden pro Wiederholung): eine Quelle für Animation, Autopilot und Plandauer
+function tempoField(ex) {
+  const v = tempoOf(ex.id), est = TEMPO[ex.id] ?? 3, own = db.tempo?.[ex.id] != null;
+  const use = ex.mode === 'time'
+    ? 'Bestimmt, wie schnell die Animation läuft.'
+    : `Danach richten sich Animation, Autopilot und die geschätzte Plandauer${ex.side ? ' – je Seite' : ''}.`;
+  return pill('Tempo') + `
+    <div class="stepper-wrap" data-ex="${ex.id}"><span>Sekunden pro Wiederholung</span><div class="stepper">
+      <button data-act="tempo" data-d="-0.5" aria-label="Schneller">−</button>
+      <output class="t-val">${fmtNum(v)}<i> s</i></output>
+      <button data-act="tempo" data-d="0.5" aria-label="Langsamer">+</button></div></div>
+    <p class="hint below">${use} ${own
+      ? `Geändert · Schätzung ${fmtNum(est)} s. <button class="link" data-act="tempo-one" data-ex="${ex.id}">Zurücksetzen</button>`
+      : 'Schätzung für eine ruhige, kontrollierte Ausführung (1–8 s).'}</p>`;
+}
+
 function viewExercise(id) {
   const ex = byId[id];
   if (!ex) return header('Übung') + empty('Diese Übung gibt es nicht (mehr).');
@@ -322,6 +338,7 @@ function viewExercise(id) {
     <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${ex.mode === 'time' ? 'Auf Zeit' : ex.side ? 'Wiederholungen je Seite' : 'Wiederholungen'}</span></div>
     <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(lead)}</p></div></div>
     ${points.length ? pill('Worauf ich achte') + `<ul class="checklist">${points.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
+    ${tempoField(ex)}
     ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
     <button class="btn primary big" data-act="add-sheet">${icon.plus}Zu Plan hinzufügen</button>
     ${addSheet ? `<div class="sheet-bg" data-act="add-sheet-close"></div>
@@ -903,24 +920,15 @@ function viewHistory() {
 // ── Einstellungen ─────────────────────────────────────────
 function viewTempo() {
   const custom = Object.keys(db.tempo || {}).length;
-  const row = (ex) => {
-    const v = tempoOf(ex.id), own = db.tempo?.[ex.id] != null;
-    return `<div class="tempo-row" data-ex="${ex.id}">${circleFig(ex, 'sm')}
-      <div class="prow-txt"><b><span>${esc(ex.name)}</span></b><small>${own ? `geändert · Schätzung ${fmtNum(TEMPO[ex.id] ?? 3)} s` : 'Schätzung'}</small></div>
-      <div class="stepper"><button data-act="tempo" data-d="-0.5" aria-label="${esc(ex.name)} schneller">−</button>
-      <output class="t-val">${fmtNum(v)}<i> s</i></output>
-      <button data-act="tempo" data-d="0.5" aria-label="${esc(ex.name)} langsamer">+</button></div></div>`;
-  };
-  return header('Zeiten', ['#/einstellungen', 'Einstellungen']) + `
-    <p class="sub">Im Autopilot zählt flow.training die Wiederholungen in diesem Tempo herunter. Die Animation der Übung läuft im selben Tempo. Die Werte sind Schätzungen für eine ruhige, kontrollierte Ausführung – pass sie an dein Tempo an (1–8 s).</p>
+  return header('Vorlauf', ['#/einstellungen', 'Einstellungen']) + `
+    <p class="sub">Im Autopilot zählt flow.training die Wiederholungen im Tempo der Übung herunter. Das Tempo stellst du direkt bei der Übung ein: <a href="#/katalog">Übungen</a> · Übung öffnen · Tempo.</p>
     ${pill('Vorlauf')}
     <div class="stepper-wrap" data-pfield="setup"><span>Vor einem Satz ohne Pause davor</span><div class="stepper">
       <button data-act="setup" data-d="-1" aria-label="Vorlauf kürzer">−</button><output class="t-val">${fmtNum(db.setup ?? 5)}<i> s</i></output>
       <button data-act="setup" data-d="1" aria-label="Vorlauf länger">+</button></div></div>
     <p class="hint">Gilt z. B. beim Wechsel im Superset oder am Trainingsbeginn. Nach einer Pause geht es direkt los – die endet schon mit 3-2-1.</p>
-    ${pill('Sekunden pro Wiederholung')}
-    <div class="plist">${EXERCISES.map(row).join('')}</div>
-    ${custom ? `<button class="btn text big" data-act="tempo-reset">Alle auf Schätzung zurücksetzen</button>` : ''}`;
+    ${custom ? `${pill('Tempo')}<p class="hint">Bei ${custom} Übung${custom === 1 ? '' : 'en'} hast du das Tempo geändert.</p>
+    <button class="btn text big" data-act="tempo-reset">Alle auf Schätzung zurücksetzen</button>` : ''}`;
 }
 
 
@@ -939,7 +947,7 @@ function viewSettings() {
     <div class="listbox">
       <label class="li"><span>Ton beim Timer</span>${sw('sound-cb', db.sound, 'Ton beim Timer')}</label>
       <label class="li"><span>Autopilot<small>Auch Wiederholungen zählen herunter und es geht automatisch weiter.</small></span>${sw('autopilot-cb', db.autopilot, 'Autopilot')}</label>
-      <a class="li indent ${db.autopilot ? '' : 'off'}" href="#/einstellungen/zeiten"><span>Zeiten für den Autopilot</span><small class="val">${fmtNum(db.setup ?? 5)} s Vorlauf</small>${icon.chev}</a>
+      <a class="li indent ${db.autopilot ? '' : 'off'}" href="#/einstellungen/zeiten"><span>Vorlauf für den Autopilot</span><small class="val">${fmtNum(db.setup ?? 5)} s</small>${icon.chev}</a>
     </div>
     ${pill('Daten')}
     <div class="listbox">
@@ -1253,6 +1261,8 @@ document.addEventListener('click', (ev) => {
       if (v === (TEMPO[id] ?? 3)) delete db.tempo[id]; else db.tempo[id] = v;
       save(); render(); break;
     }
+    case 'tempo-one':
+      db.tempo = { ...(db.tempo || {}) }; delete db.tempo[btn.dataset.ex]; save(); render(); break;
     case 'tempo-reset':
       if (confirm('Alle Tempi auf die Schätzung zurücksetzen?')) { db.tempo = {}; save(); render(); }
       break;

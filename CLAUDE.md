@@ -59,6 +59,8 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Zeit-Übungen starten nach einer Pause automatisch. Bildaufbau Wiederholung/Zeit identisch (Ring im Figur-Kreis, Regler-Karte).
 - Autopilot (Einstellung): auch Wiederholungen zählen herunter (Tempo × Wdh.) und schalten automatisch weiter.
   Tempo-Schätzungen in `TEMPO` (`js/exercises.js`), eigene Werte in `db.tempo` (1–8 s); Vorlauf `db.setup` nur vor Sätzen ohne Pause davor.
+  Tempo stellt man **bei der Übung** ein (Übungen › Übung › Tempo, `tempoField`), nicht in den Einstellungen (Wunsch 2026-11-22);
+  *Einstellungen › Vorlauf für den Autopilot* enthält nur noch den Vorlauf und „Alle auf Schätzung zurücksetzen“.
 - Tempo ist die eine Quelle für Animation, Autopilot und Plandauer: 1 Animationszyklus = 1 Wiederholung; mit Timer phasengenau gekoppelt.
 - „Als Nächstes“-Karte mit Piktogramm auf Übungs- und Pausen-Screens.
 - **Alle Trainingsseiten teilen ein Gerüst** (`trScreen` in `js/app.js`, Konzept A): Kopf · Fortschritt · Kreis · Titel · Untertitel ·
