@@ -47,8 +47,9 @@ export function solve(p) {
   const [k, a] = limb(hp, p.th ?? 180, p.sh ?? 180, p.a, L.thigh, L.shin, p.ab ?? -1);
   const hasLeg2 = p.th2 != null || p.a2;
   const [k2, a2] = hasLeg2 ? limb(hp, p.th2, p.sh2, p.a2, L.thigh, L.shin, p.ab2 ?? -1) : [k, a];
-  const f = footOf(k, a, p.ff ?? 1);
-  const f2 = footOf(k2, a2, p.ff2 ?? p.ff ?? 1);
+  // fd = Richtung des Fußes (Winkel), sonst rechtwinklig zum Schienbein
+  const f = p.fd != null ? add(a, dir(p.fd, L.foot)) : footOf(k, a, p.ff ?? 1);
+  const f2 = !hasLeg2 ? f : p.fd2 != null ? add(a2, dir(p.fd2, L.foot)) : footOf(k2, a2, p.ff2 ?? p.ff ?? 1);
   return { hp, n, h, e, w, e2, w2, k, a, k2, a2, f, f2 };
 }
 
@@ -72,8 +73,12 @@ function armAng(A, B, t, front, trA, trB) {
 function inbetween(ex, pA, pB, A, B, t) {
   if (t <= 0) return A;
   if (t >= 1) return B;
+  // flat: Bewegung auf den Betrachter zu – Arm wird perspektivisch kürzer, daher Punkte statt Winkel
+  if (pA.flat) return Object.fromEntries(Object.keys(A).map((k) => [k, lerpPt(A[k], B[k], t)]));
   const hp = lerpPt(A.hp, B.hp, t), tr = lerpAng(pA.tr, pB.tr, t);
   const p = { hp, tr, hd: lerpAng(pA.hd ?? pA.tr, pB.hd ?? pB.tr, t), ff: pA.ff, ff2: pA.ff2 };
+  if (pA.fd != null || pB.fd != null) p.fd = lerpAng(angOf(A.a, A.f), angOf(B.a, B.f), t);
+  if (pA.fd2 != null || pB.fd2 != null) p.fd2 = lerpAng(angOf(A.a2, A.f2), angOf(B.a2, B.f2), t);
   const arm = (far) => {
     const spec = (q) => (far && (q.ua2 != null || q.w2) ? [q.w2, q.wb2] : [q.w, q.wb]);
     const [wA, bA] = spec(pA), [wB, bB] = spec(pB), s = far ? '2' : '';
@@ -111,7 +116,7 @@ function propsSVG(props, J, ghost) {
   const cls = ghost ? ' prop-ghost' : '';
   for (const pr of props) {
     if (pr.t === 'db') {
-      for (const key of pr.both === false ? ['w'] : ['w2', 'w']) {
+      for (const key of pr.at ? [pr.at] : pr.both === false ? ['w'] : ['w2', 'w']) {
         const p = J[key];
         s += `<g class="prop${cls}"><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="4.2"/></g>`;
         if (J.w2[0] === J.w[0] && J.w2[1] === J.w[1]) break;
@@ -125,7 +130,9 @@ function propsSVG(props, J, ghost) {
       const c = add(J.w, [u[0] * 6.5, u[1] * 6.5]);
       s += `<g class="prop${cls}"><path class="prop-line" d="${line(J.w, c)}"/><circle cx="${f1(c[0])}" cy="${f1(c[1])}" r="5"/></g>`;
     } else if (pr.t === 'band' && !ghost) {
-      s += `<path class="prop-band" d="${line(pr.from, J[pr.to || 'w'])}"/><circle class="prop-anchor" cx="${pr.from[0]}" cy="${pr.from[1]}" r="1.8"/>`;
+      // from = fester Ankerpunkt oder Gelenkname (Band am Körper, z. B. um den Fuß)
+      const body = typeof pr.from === 'string', q = body ? J[pr.from] : pr.from;
+      s += `<path class="prop-band" d="${line(q, J[pr.to || 'w'])}"/>` + (body ? '' : `<circle class="prop-anchor" cx="${q[0]}" cy="${q[1]}" r="1.8"/>`);
     }
   }
   return s;
@@ -155,7 +162,7 @@ function fitView(ex) {
   for (const pr of ex.props || []) {
     if (pr.t === 'bench') { xs.push(pr.x, pr.x + pr.w); ys.push(pr.y); }
     if (pr.t === 'bar') { ys.push(pr.y); }
-    if (pr.t === 'band') { xs.push(pr.from[0]); ys.push(pr.from[1]); }
+    if (pr.t === 'band' && typeof pr.from !== 'string') { xs.push(pr.from[0]); ys.push(pr.from[1]); }
   }
   if (!ex.noGround) ys.push(GROUND);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
@@ -175,47 +182,82 @@ function posesOf(ex) {
   return cache.get(ex.id);
 }
 
-// Statische Darstellung: Startpose blass, Endpose kräftig
+// Statische Darstellung: Startpose blass, Hauptpose kräftig (ex.key, sonst die zweite Pose)
 export function figureStatic(ex, fit = false) {
   const P = posesOf(ex);
   const props = ex.props || [];
   if (P.length === 1) return frame(ex, propsSVG(props, P[0]) + bodySVG(P[0]), fit);
-  return frame(ex, propsSVG(props, P[0], true) + bodySVG(P[0], true) + propsSVG(props, P[1]) + bodySVG(P[1]), fit);
+  const K = P[ex.key ?? 1];
+  return frame(ex, propsSVG(props, P[0], true) + bodySVG(P[0], true) + propsSVG(props, K) + bodySVG(K), fit);
 }
 
-export function figureAt(ex, t) {
+// Ablauf einer Wiederholung: ex.seq = Reihenfolge der Posen (Standard: alle der Reihe nach), danach zurück zur ersten.
+// Posen mit via: true werden ohne Halt durchlaufen. Zusammen HOLD_SUM der Zeit wird in den übrigen Posen gehalten.
+const HOLD_SUM = 0.24;
+const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+const timelines = new Map();
+function timeline(ex) {
+  if (timelines.has(ex.id)) return timelines.get(ex.id);
+  const seq = ex.seq || ex.poses.map((_, i) => i), n = seq.length;
+  const stops = seq.map((_, i) => i).filter((i) => i === 0 || !ex.poses[seq[i]].via);
+  const hold = HOLD_SUM / stops.length, perSeg = (1 - HOLD_SUM) / n;
+  let at = 0;
+  const legs = stops.map((from, k) => {
+    const to = k + 1 < stops.length ? stops[k + 1] : n, o = { from, segs: to - from, t0: at, t1: at + hold, t2: at + hold + (to - from) * perSeg };
+    at = o.t2;
+    return o;
+  });
+  const tl = { seq, n, legs };
+  timelines.set(ex.id, tl);
+  return tl;
+}
+
+// Nahe und ferne Seite tauschen (ex.alt: jede zweite Wiederholung mit der anderen Seite)
+function mirror(q) {
+  const o = { ...q }, leg2 = q.th2 != null || q.a2, arm2 = q.ua2 != null || q.w2;
+  const swap = (has, keys) => { if (has) for (const k of keys) { o[k] = q[k + '2']; o[k + '2'] = q[k]; } };
+  swap(leg2, ['th', 'sh', 'a', 'ab', 'ff', 'fd']);
+  swap(arm2, ['ua', 'fa', 'w', 'wb']);
+  return o;
+}
+const mirrored = new Map();
+function poseOf(ex, i, m) {
+  if (!m) return [ex.poses[i], posesOf(ex)[i]];
+  if (!mirrored.has(ex.id)) mirrored.set(ex.id, ex.poses.map((q) => { const p = mirror(q); return [p, solve(p)]; }));
+  return mirrored.get(ex.id)[i];
+}
+
+// Figur zur Phase ph: ganze Zahl = Wiederholung, Nachkomma = Fortschritt darin
+export function figureAt(ex, ph) {
   const P = posesOf(ex);
-  const J = P.length === 1 ? P[0] : inbetween(ex, ex.poses[0], ex.poses[1], P[0], P[1], t);
+  let J = P[0];
+  if (P.length > 1) {
+    const rep = Math.floor(ph + 1e-9), x = Math.max(0, ph - rep), { seq, n, legs } = timeline(ex);
+    const L = legs.find((l) => x < l.t2) || legs[legs.length - 1];
+    const u = x <= L.t1 ? 0 : ease(Math.min(1, (x - L.t1) / (L.t2 - L.t1))) * L.segs;
+    const k = Math.min(L.segs - 1, Math.floor(u)), i = L.from + k, m = !!ex.alt && rep % 2 === 1;
+    const [pA, A] = poseOf(ex, seq[i], m);
+    const [pB, B] = i + 1 < n ? poseOf(ex, seq[i + 1], m) : poseOf(ex, seq[0], ex.alt ? !m : false);
+    J = inbetween(ex, pA, pB, A, B, u - k);
+  }
   return propsSVG(ex.props || [], J) + bodySVG(J);
 }
 
-// Verlauf einer Wiederholung über die Phase p ∈ [0,1): kurz halten, hin, kurz halten, zurück.
-// Ein Zyklus = eine Wiederholung, damit Animation und Tempo der Übung übereinstimmen.
-const HOLD = 0.12;
-const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
-function poseAt(p) {
-  const move = 0.5 - HOLD;
-  if (p < HOLD) return 0;
-  if (p < 0.5) return ease((p - HOLD) / move);
-  if (p < 0.5 + HOLD) return 1;
-  return 1 - ease((p - 0.5 - HOLD) / move);
-}
-
-// Animiert zwischen den Posen; liefert Stop-Funktion.
+// Animiert die Posenfolge; liefert Stop-Funktion. Ein Zyklus = eine Wiederholung, passend zum Tempo der Übung.
 // period: Sekunden pro Wiederholung. phase(): optional, liefert die Phase vom Trainings-Timer
-// (0…1) oder null = in Startpose halten (Vorlauf, noch nicht gestartet).
+// (Wiederholung + Anteil) oder null = in Startpose halten (Vorlauf, noch nicht gestartet).
 export function animateFigure(el, ex, { period = 3, phase } = {}) {
   const P = posesOf(ex);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (P.length === 1 || reduce) { el.innerHTML = figureStatic(ex); return () => {}; }
   el.innerHTML = frame(ex, '<g class="anim"></g>');
   const g = el.querySelector('.anim');
-  let raf, start = performance.now(), stopped = false, last = -1;
+  let raf, start = performance.now(), stopped = false, last = '';
   const tick = (now) => {
     if (stopped || !el.isConnected) return;
-    const ph = phase ? phase() : (((now - start) / 1000) / period) % 1;
-    const t = ph == null ? 0 : poseAt(ph);
-    if (Math.abs(t - last) > 0.002) { g.innerHTML = figureAt(ex, t); last = t; }
+    const ph = phase ? phase() : Math.max(0, (now - start) / 1000 / period);
+    const svg = figureAt(ex, ph ?? 0);
+    if (svg !== last) { g.innerHTML = svg; last = svg; }
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);

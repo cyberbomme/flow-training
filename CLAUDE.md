@@ -42,6 +42,9 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   Zeit-Übung mit `side: true` (Seitstütz): zwei Schritte im Training (rechts, links) mit 5 s „Seite wechseln“, ein Satz im Verlauf (Dauer je Seite).
   Fehlende Gelenkwinkel in einer Pose = Glied hängt senkrecht (Vorgabe in `figure.js`). Zwischenposen über Gelenkwinkel, nicht Punkte (`inbetween`),
   damit Glieder ihre Länge behalten; `front: true` = Frontalansicht (Arme zur Seite, kürzester Weg).
+  Mehr als zwei Posen: `seq` = Reihenfolge je Wiederholung (danach zurück zur ersten), `via: true` = ohne Halt durchlaufen, `key` = Pose fürs Standbild,
+  `alt: true` = jede zweite Wiederholung mit der anderen Seite, `flat: true` = Bewegung auf den Betrachter zu (Glied darf kürzer wirken), `fd` = Fußrichtung.
+  Dehnungen bleiben bei zwei Posen (Training hält bei Phase 0,5). Prüfseite: `docs/figuren-review.html` (nicht im Offline-Cache).
 - Plan-Icons automatisch (`js/planicon.js`): erst Stichwort im Titel (Zyklusphasen, HIIT, Mobilität, Regeneration, Klettern,
   Core, Beine, Oberkörper, Ganzkörper, Kraft), sonst aus Muskelgruppen/Zeitanteil der Übungen.
 - Version steht nur in `js/version.js` (Anzeige in *Einstellungen*, Cache-Name im Service Worker). Bei jedem Deploy hochzählen.

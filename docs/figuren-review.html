@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Figuren-Review · flow.training</title>
+<link rel="stylesheet" href="../app.css">
+<style>
+  /* Prüfseite: Text und Animation nebeneinander (nicht Teil der App, nicht im Offline-Cache) */
+  body { padding: 0 16px 48px; max-width: 1200px; margin: 0 auto; }
+  .intro { color: var(--color-text-muted); margin: 0 0 16px; }
+  .ctrl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--color-surface); border-radius: var(--r-card); padding: 12px; display: grid; gap: 8px; align-content: start; }
+  .card .fig-hero { margin: 0; max-height: none; }
+  .card .fig-hero.rose { --fig-bg: var(--color-peach); }
+  .card p, .card ul { margin: 0; font-size: 14px; line-height: 1.45; }
+  .card ul { padding-left: 18px; color: var(--color-text-muted); }
+  .card .badges { margin: 0; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pair small { color: var(--color-text-muted); }
+</style>
+</head>
+<body>
+<header class="app-head"><div class="head-row"><h1>Figuren-Review</h1></div></header>
+<p class="intro" id="intro"></p>
+<div class="ctrl" id="ctrl"></div>
+<div class="grid" id="out"></div>
+<script type="module">
+import { EXERCISES, byId, TEMPO, isStretch } from '../js/exercises.js';
+import { animateFigure } from '../js/figure.js';
+import { DRAFTS, draftAt, draftSVG } from './entwurf-ansichten.js';
+
+const A = 'dead-bug crawling bulgarian-split-squat schulterdruecken-kniend ausfallschritt clock-lunges seitlicher-ausfallschritt diagonal-ausfallschritt-band goblet-reverse-lunge trx-curtsy jump-lunge seitsprints klimmzug bank-dips crunch kb-swing seit-frontheben curl-arnold curl-trizeps beincurl-kh figur-vier waden-stufe schulter-dehnung hamstring-liegend'.split(' ');
+const B = 'walkout kang-squat kreuzheben-push-press rdl-rudern burpee-kh push-plank snatch-einarmig snatch-beidarmig'.split(' ');
+const TABS = [
+  { id: 'a', name: `A: korrigiert (${A.length})`, list: A, intro: 'Figuren, die dem Text widersprochen haben.' },
+  { id: 'b', name: `B: Phasen ergänzt (${B.length})`, list: B, intro: 'Abläufe, bei denen Phasen gefehlt haben.' },
+  { id: 'c', name: `C: Entwürfe (${DRAFTS.length})`, intro: 'Neue Ansichten „von oben“ und „von vorn“. Noch nicht in der App: links heute, rechts der Entwurf.' },
+  { id: 's', name: 'Dehntexte (24)', list: EXERCISES.filter(isStretch).map((e) => e.id), intro: 'Neu formulierte Texte der Dehnübungen.' },
+  { id: 'k', name: 'Alle Kraftübungen', list: EXERCISES.filter((e) => !isStretch(e)).map((e) => e.id), intro: 'Alle 93 Kraftübungen mit neuem Text.' },
+];
+const $ = (id) => document.getElementById(id);
+const period = (e) => (isStretch(e) && !e.dynamic ? 6 : TEMPO[e.id] ?? 3);
+let stops = [], raf = 0;
+
+function draw(id) {
+  stops.forEach((f) => f()); stops = []; cancelAnimationFrame(raf);
+  const tab = TABS.find((t) => t.id === id) || TABS[0], ids = tab.list || DRAFTS.map((d) => d.id);
+  $('intro').textContent = tab.intro;
+  $('ctrl').innerHTML = TABS.map((t) => `<button class="chip ${t === tab ? 'on' : ''}" data-tab="${t.id}">${t.name}</button>`).join('');
+  $('out').innerHTML = ids.map((i, n) => {
+    const e = byId[i], d = tab.list ? null : DRAFTS[n], rose = isStretch(e) ? 'rose' : '';
+    const fig = `<div class="fig-hero ${rose}" data-id="${i}"></div>`;
+    return `<div class="card">${d ? `<div class="pair"><div>${fig}<small>Heute</small></div><div><div class="fig-hero ${rose}" data-draft="${n}"></div><small>Entwurf · ${d.cam}</small></div></div>` : fig}
+      <b>${n + 1}. ${e.name}</b><div class="badges">${e.side ? '<span class="badge">Je Seite</span>' : ''}<span class="badge">${String(period(e)).replace('.', ',')} s</span></div>
+      <p>${e.how}</p>${e.cues?.length ? `<ul>${e.cues.map((c) => `<li>${c}</li>`).join('')}</ul>` : ''}</div>`;
+  }).join('');
+  for (const el of $('out').querySelectorAll('[data-id]')) stops.push(animateFigure(el, byId[el.dataset.id], { period: period(byId[el.dataset.id]) }));
+  const ds = [...$('out').querySelectorAll('[data-draft]')];
+  const tick = (now) => { ds.forEach((el) => { const d = DRAFTS[+el.dataset.draft]; el.innerHTML = draftSVG(d, draftAt(d, now / 1000 / (d.seq.length > 2 ? 5 : 4))); }); raf = requestAnimationFrame(tick); };
+  if (ds.length) raf = requestAnimationFrame(tick);
+}
+$('ctrl').addEventListener('click', (ev) => { const t = ev.target.dataset.tab; if (t) { location.hash = t; draw(t); } });
+draw(location.hash.slice(1));
+</script>
+</body>
+</html>

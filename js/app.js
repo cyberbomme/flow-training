@@ -885,7 +885,7 @@ function trainingPhase(exId) {
   }
   if (z.setupLeft > 0 || (!t.running && z.wr >= z.work)) return null;
   const tempo = t.tempo || tempoOf(exId);
-  return ((z.work - z.wr) % tempo) / tempo;
+  return (z.work - z.wr) / tempo; // Wiederholung + Anteil
 }
 
 // Timer-Zustand mit Vorlauf: total = setup + work. Im Vorlauf steht der Ring voll.

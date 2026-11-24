@@ -39,9 +39,12 @@ export const EXERCISES = [
     id: 'ausfallschritt', name: 'Ausfallschritt', equip: [], muscles: 'Oberschenkel · Gesäß', mode: 'reps',
     how: 'Aus dem Stand einen großen Schritt nach vorn machen. Senkrecht absenken, bis das hintere Knie knapp über dem Boden ist. Über den vorderen Fuß abdrücken und zurück in den Stand. Seiten abwechseln.',
     cues: ['Oberkörper aufrecht.', 'Vorderes Knie bleibt über dem Fuß, nicht nach innen.'],
+    seq: [0, 1, 2, 3, 2, 1], key: 3, alt: true,
     poses: [
-      { hp: [46, 53], tr: 0, a: [62, 90], a2: [30, 90], ua: 180, fa: 180 },
-      { hp: [46, 70], tr: 0, a: [62, 90], a2: [30, 90], ua: 180, fa: 180 },
+      { hp: [38, 50], tr: 0, a: [38, 90], a2: [38, 90], ua: 180, fa: 180 },
+      { via: true, hp: [42, 51], tr: 0, a: [50, 83], a2: [38, 90], ua: 180, fa: 180 },
+      { via: true, hp: [52, 54], tr: 0, a: [70, 90], a2: [38, 90], ua: 180, fa: 180 },
+      { hp: [54, 70], tr: 0, a: [70, 90], a2: [38, 90], ua: 180, fa: 180 },
     ],
   },
   {
@@ -95,8 +98,8 @@ export const EXERCISES = [
     how: 'Rückenlage, Beine aufgestellt, Hände locker an den Schläfen. Oberkörper einrollen, bis die Schulterblätter abheben, und langsam wieder ablegen.',
     cues: ['Unterer Rücken bleibt am Boden.', 'Nacken locker, nicht am Kopf ziehen.'],
     poses: [
-      { hp: [56, 84], tr: 270, hd: 270, a: [80, 90], ua: 100, fa: 98 },
-      { hp: [56, 84], tr: 300, hd: 305, a: [80, 90], ua: 105, fa: 105 },
+      { hp: [56, 84], tr: 270, hd: 270, a: [80, 90], w: [19, 80], wb: 1 },
+      { hp: [56, 84], tr: 300, hd: 305, a: [80, 90], w: [25, 61], wb: 1 },
     ],
   },
   {
@@ -111,18 +114,18 @@ export const EXERCISES = [
     cues: ['Rücken bleibt nah an der Bank.', 'Schultern weg von den Ohren.', 'Leichter: Knie gebeugt.'],
     props: [{ t: 'bench', x: 12, y: 66, w: 32 }],
     poses: [
-      { hp: [48, 68], tr: 356, w: [42, 66], a: [82, 90] },
-      { hp: [48, 80], tr: 356, w: [42, 66], a: [82, 90] },
+      { hp: [50.6, 68], tr: 356, w: [42, 66], a: [84, 90] },
+      { hp: [45.3, 80], tr: 356, w: [42, 66], a: [84, 90] },
     ],
   },
   {
     id: 'klimmzug', name: 'Klimmzug', equip: ['stange'], muscles: 'Rücken · Bizeps', mode: 'reps',
     how: 'Stange im Obergriff etwas breiter als schulterbreit greifen und gestreckt hängen. Schulterblätter nach unten ziehen und den Körper hochziehen, bis das Kinn über der Stange ist. Kontrolliert ablassen, bis die Arme wieder gestreckt sind.',
     cues: ['Ohne Schwung aus den Beinen.', 'Leichter: mit Band oder nur langsam ablassen.'],
-    noGround: true, props: [{ t: 'bar', x: 56, y: 12 }],
+    noGround: true, view: '-6 -8 112 112', props: [{ t: 'bar', x: 56, y: 12 }],
     poses: [
       { hp: [51, 67], tr: 0, w: [56, 12], th: 185, sh: 245 },
-      { hp: [48, 49], tr: 0, hd: 6, w: [56, 12], th: 185, sh: 245 },
+      { hp: [48, 42], tr: 0, hd: 6, w: [56, 12], th: 185, sh: 245 },
     ],
   },
   {
@@ -245,7 +248,7 @@ export const EXERCISES = [
     cues: ['Die Kraft kommt aus der Hüfte, nicht aus den Armen.', 'Rücken gerade, oben Gesäß anspannen.'],
     props: [{ t: 'kb' }],
     poses: [
-      { hp: [42, 52], tr: 65, a: [52, 90], ua: 200, fa: 200 },
+      { hp: [40, 53], tr: 80, a: [52, 90], ua: 240, fa: 240 },
       { hp: [51, 50], tr: 0, a: [52, 90], ua: 90, fa: 90 },
     ],
   },
@@ -283,8 +286,8 @@ export const EXERCISES = [
     how: 'Vierfüßlerstand, Hände unter den Schultern, Knie unter der Hüfte, Knie eine Handbreit vom Boden abheben. Gegengleich eine Hand und den anderen Fuß ein kleines Stück nach vorn setzen, dann die andere Seite. Jeder Schritt zählt als Wiederholung.',
     cues: ['Rücken flach, Hüfte ruhig.', 'Langsam ist schwerer als schnell.'],
     poses: [
-      { hp: [42, 64], tr: 86, a: [34, 90], a2: [42, 90], w: [70, 90], w2: [76, 90] },
-      { hp: [48, 64], tr: 86, a: [48, 90], a2: [40, 90], w: [82, 90], w2: [76, 90] },
+      { hp: [42, 64], tr: 86, a: [41, 90], a2: [34, 90], w: [70, 90], w2: [76, 90] },
+      { hp: [48, 64], tr: 86, a: [41, 90], a2: [48, 90], w: [82, 90], w2: [76, 90] },
     ],
   },
   {
@@ -300,9 +303,12 @@ export const EXERCISES = [
     id: 'seitsprints', front: true, name: 'Seitliche Sprints (Side Shuffle)', equip: [], muscles: 'Oberschenkel · Gesäß · Ausdauer', mode: 'time',
     how: 'Breite, tiefe Grundstellung, Knie gebeugt. Mit schnellen, kurzen Schritten seitlich laufen und nach ein paar Schritten die Richtung wechseln.',
     cues: ['Füße nicht überkreuzen.', 'Tief bleiben, nicht aufrichten.'],
+    seq: [0, 1, 2, 3, 2, 1], key: 3,
     poses: [
-      { hp: [42, 58], tr: 0, a: [30, 90], a2: [54, 90], ua: 165, fa: 60, ua2: 195, fa2: 300 },
-      { hp: [58, 58], tr: 0, a: [46, 90], a2: [70, 90], ua: 165, fa: 60, ua2: 195, fa2: 300 },
+      { hp: [42, 62], tr: 0, a: [27, 90], a2: [57, 90], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
+      { via: true, hp: [47, 61], tr: 0, a: [27, 90], a2: [66, 86], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
+      { via: true, hp: [53, 61], tr: 0, a: [36, 86], a2: [71, 90], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
+      { hp: [56, 62], tr: 0, a: [41, 90], a2: [71, 90], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
     ],
   },
   {
@@ -328,8 +334,11 @@ export const EXERCISES = [
     id: 'walkout', name: 'Walkout', equip: [], muscles: 'Rumpf · Schultern · hintere Oberschenkel', mode: 'reps',
     how: 'Aus dem Stand mit möglichst gestreckten Beinen nach vorn beugen und die Hände vor den Füßen aufsetzen. Mit den Händen nach vorn laufen, bis du im hohen Liegestütz bist. Kurz halten, mit den Händen zurücklaufen und aufrichten.',
     cues: ['Im Stütz Körper gerade, Hüfte nicht durchhängen lassen.', 'Knie dürfen beim Aufsetzen leicht gebeugt sein.'],
+    seq: [0, 1, 2, 3, 2, 1], key: 3,
     poses: [
-      { hp: [21, 52], tr: 150, a: [18, 90], w: [38, 90] },
+      { hp: [18, 50], tr: 0, a: [18, 90] },
+      { hp: [16, 51], tr: 130, a: [18, 90], w: [44, 90] },
+      { via: true, hp: [33, 58], tr: 100, a: [18, 90], w: [64, 90] },
       { hp: [54.7, 74.1], tr: 67, a: [18, 90], w: [80, 90] },
     ],
   },
@@ -359,9 +368,11 @@ export const EXERCISES = [
     id: 'jump-lunge', name: 'Ausfallschrittsprung (Jump Lunge)', equip: [], muscles: 'Oberschenkel · Gesäß · Ausdauer', mode: 'reps',
     how: 'Ausfallschritt, beide Knie gebeugt. Hochspringen, in der Luft die Beine wechseln und im Ausfallschritt mit dem anderen Bein vorn landen. Jede Landung ist eine Wiederholung.',
     cues: ['Weich landen, hinteres Knie knapp über dem Boden.', 'Oberkörper aufrecht.'],
+    key: 1, alt: true,
     poses: [
       { hp: [46, 70], tr: 0, a: [62, 90], a2: [30, 90], ua: 200, fa: 140, ua2: 150, fa2: 60 },
-      { hp: [46, 70], tr: 0, a: [30, 90], a2: [62, 90], ua: 150, fa: 60, ua2: 200, fa2: 140 },
+      { via: true, hp: [46, 47], tr: 0, a: [52, 83], a2: [40, 83], ua: 190, fa: 120, ua2: 160, fa2: 80 },
+      { via: true, hp: [46, 47], tr: 0, a: [40, 83], a2: [52, 83], ua: 160, fa: 80, ua2: 190, fa2: 120 },
     ],
   },
   {
@@ -386,9 +397,11 @@ export const EXERCISES = [
     id: 'seitlicher-ausfallschritt', front: true, name: 'Seitlicher Ausfallschritt', equip: [], muscles: 'Oberschenkel · Gesäß · Adduktoren', mode: 'reps', side: true,
     how: 'Aus dem Stand einen breiten Schritt zur Seite machen. Hüfte nach hinten schieben und ins Knie des Schrittbeins sinken, das andere Bein bleibt gestreckt. Über das Schrittbein zurück in den Stand drücken. Erst alle Wiederholungen auf einer Seite.',
     cues: ['Beide Fersen bleiben am Boden.', 'Knie zeigt in Richtung Zehen.'],
+    seq: [0, 1, 2, 1], key: 2,
     poses: [
-      { hp: [50, 50], tr: 0, a: [45, 90], a2: [55, 90], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
-      { hp: [38, 66], tr: 350, a: [28, 90], a2: [74, 89], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
+      { hp: [65, 50], tr: 0, a: [60, 90], a2: [70, 90], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
+      { via: true, hp: [57, 53], tr: 0, a: [44, 84], a2: [70, 90], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
+      { hp: [37.2, 67.2], tr: 355, a: [28, 90], a2: [70, 90], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
     ],
   },
   {
@@ -404,9 +417,15 @@ export const EXERCISES = [
     id: 'clock-lunges', name: 'Uhr-Ausfallschritte (Clock Lunges)', equip: [], muscles: 'Oberschenkel · Gesäß', mode: 'reps', side: true,
     how: 'Ein Bein bleibt in der Mitte stehen. Mit dem anderen nacheinander einen Ausfallschritt nach vorn, zur Seite und nach hinten machen, jeweils zurück zur Mitte – wie die Zeiger einer Uhr. Eine Runde ist eine Wiederholung, danach Seite wechseln.',
     cues: ['Standbein stabil, Knie über dem Fuß.', 'Oberkörper aufrecht.'],
+    seq: [0, 1, 2, 1, 0, 3, 4, 3, 0, 5, 6, 5], key: 2,
     poses: [
-      { hp: [57, 70], tr: 0, a: [73, 90], a2: [40, 90], ab2: -1 },
-      { hp: [44, 70], tr: 5, a: [26, 90], a2: [58, 90] },
+      { hp: [50, 50], tr: 0, a: [50, 90], a2: [50, 90] },
+      { via: true, hp: [56, 53], tr: 0, a: [64, 83], a2: [50, 90] },
+      { hp: [66, 70], tr: 0, a: [82, 90], a2: [50, 90] },
+      { via: true, hp: [49, 55], tr: 2, a: [53, 89], a2: [50, 90] },
+      { hp: [44, 66], tr: 8, a: [57, 96], a2: [50, 90] },
+      { via: true, hp: [46, 53], tr: 0, a: [35, 83], a2: [50, 90] },
+      { hp: [35, 70], tr: 4, a: [18, 90], a2: [50, 90] },
     ],
   },
   {
@@ -415,8 +434,8 @@ export const EXERCISES = [
     cues: ['Vorderes Knie über dem Fuß.', 'Oberkörper leicht vorgeneigt.', 'Schwerer: mit Kurzhanteln.'],
     props: [{ t: 'bench', x: 6, y: 70, w: 24 }],
     poses: [
-      { hp: [50, 52], tr: 4, a: [64, 90], a2: [26, 70], ab2: 1 },
-      { hp: [46, 68], tr: 12, a: [64, 90], a2: [26, 70], ab2: 1 },
+      { hp: [50, 52], tr: 4, a: [64, 90], a2: [26, 70] },
+      { hp: [46, 68], tr: 12, a: [64, 90], a2: [26, 70] },
     ],
   },
   {
@@ -472,7 +491,9 @@ export const EXERCISES = [
     id: 'kang-squat', name: 'Kang Squat', equip: [], muscles: 'Hintere Oberschenkel · Gesäß · Oberschenkel', mode: 'reps',
     how: 'Aufrecht stehen, Hände an den Hinterkopf. Hüfte nach hinten schieben und den Oberkörper waagerecht kippen wie beim Good Morning. Aus dieser Position in die tiefe Hocke sinken und dabei den Oberkörper aufrichten. Zurück in umgekehrter Reihenfolge: Hüfte hoch in die Vorbeuge, dann aufrichten.',
     cues: ['Rücken in jeder Phase gerade.', 'Langsam und kontrolliert.'],
+    seq: [0, 1, 2, 1], key: 2,
     poses: [
+      { ...STAND, a: [50, 90], ua: 30, fa: 230 },
       { hp: [42, 51], tr: 82, a: [50, 90], ua: 115, fa: 315 },
       { hp: [37, 70], tr: 35, a: [50, 90], ua: 60, fa: 260 },
     ],
@@ -481,6 +502,7 @@ export const EXERCISES = [
     id: 'beincurl-kh', name: 'Beincurl liegend', equip: ['kh'], muscles: 'Hintere Oberschenkel', mode: 'reps',
     how: 'Bauchlage, eine Kurzhantel zwischen den Füßen einklemmen. Unterschenkel langsam bis senkrecht anbeugen und kontrolliert wieder absenken.',
     cues: ['Becken bleibt am Boden.', 'Alternative: Gleitpads in Rückenlage.'],
+    props: [{ t: 'db', at: 'f' }],
     poses: [
       { hp: [50, 86], tr: 268, hd: 280, th: 92, sh: 92, ua: 230, fa: 80 },
       { hp: [50, 86], tr: 268, hd: 280, th: 92, sh: 10, ua: 230, fa: 80 },
@@ -490,9 +512,13 @@ export const EXERCISES = [
     id: 'diagonal-ausfallschritt-band', name: 'Diagonaler Ausfallschritt mit Band', equip: ['band'], muscles: 'Oberschenkel · Gesäß', mode: 'reps', side: true,
     how: 'Mini-Band über den Knien. Schräg nach vorn in den Ausfallschritt gehen, unten zweimal leicht nachfedern und zurück in den Stand. Erst alle Wiederholungen auf einer Seite.',
     cues: ['Knie gegen das Band nach außen drücken.', 'Oberkörper aufrecht.'],
+    seq: [0, 1, 2, 3, 4, 3, 4, 3, 2, 1], key: 3, props: [{ t: 'band', from: 'k', to: 'k2' }],
     poses: [
-      { ...STAND, ua: 160, fa: 40 },
-      { hp: [50, 69], tr: 8, a: [66, 90], a2: [34, 90], ua: 160, fa: 40 },
+      { hp: [38, 50], tr: 0, a: [38, 90], a2: [38, 90], ua: 160, fa: 40 },
+      { via: true, hp: [42, 51], tr: 2, a: [50, 83], a2: [38, 90], ua: 160, fa: 40 },
+      { via: true, hp: [52, 54], tr: 4, a: [70, 90], a2: [38, 90], ua: 160, fa: 40 },
+      { hp: [54, 69], tr: 8, a: [70, 90], a2: [38, 90], ua: 160, fa: 40 },
+      { via: true, hp: [54, 64], tr: 8, a: [70, 90], a2: [38, 90], ua: 160, fa: 40 },
     ],
   },
 
@@ -512,9 +538,11 @@ export const EXERCISES = [
     how: 'Füße schulterbreit, in die Hocke gehen und die Hantel zwischen den Füßen greifen. Aus Hüfte und Beinen explosiv strecken, die Hantel nah am Körper hochziehen und in einem Zug über den Kopf führen, bis der Arm gestreckt ist. Kontrolliert zurück zwischen die Füße. Erst alle Wiederholungen auf einer Seite.',
     cues: ['Hantel nah am Körper führen.', 'Rücken gerade beim Absenken.'],
     view: OVERHEAD, props: [{ t: 'db', both: false }],
+    seq: [0, 1, 2, 1], key: 2,
     poses: [
-      { hp: [40, 62], tr: 55, a: [52, 90], w: [56, 84], ua2: 170, fa2: 170 },
-      { ...STAND, ua: 2, fa: 0, ua2: 182, fa2: 182 },
+      { hp: [38, 70], tr: 60, a: [52, 90], w: [54, 81], ua2: 170, fa2: 170 },
+      { via: true, hp: [48, 53], tr: 10, a: [52, 90], ua: 168, fa: 20, ua2: 180, fa2: 180 },
+      { hp: [52, 50], tr: 0, a: [52, 90], ua: 2, fa: 0, ua2: 182, fa2: 182 },
     ],
   },
   {
@@ -522,9 +550,11 @@ export const EXERCISES = [
     how: 'Füße schulterbreit, in die Hocke gehen, in jeder Hand eine Hantel zwischen den Füßen. Explosiv aus Hüfte und Beinen strecken und beide Hanteln in einem Zug über den Kopf bringen. Kontrolliert zurück zwischen die Füße.',
     cues: ['Rumpf fest, kein Hohlkreuz.', 'Rücken gerade beim Absenken.'],
     view: OVERHEAD, props: [{ t: 'db' }],
+    seq: [0, 1, 2, 1], key: 2,
     poses: [
-      { hp: [40, 62], tr: 55, a: [52, 90], w: [56, 84] },
-      { ...STAND, ua: 2, fa: 0 },
+      { hp: [38, 70], tr: 60, a: [52, 90], w: [54, 81] },
+      { via: true, hp: [48, 53], tr: 10, a: [52, 90], ua: 168, fa: 20 },
+      { hp: [52, 50], tr: 0, a: [52, 90], ua: 2, fa: 0 },
     ],
   },
   {
@@ -542,9 +572,13 @@ export const EXERCISES = [
     how: 'Hanteln vor den Oberschenkeln. Hüfte nach hinten schieben und die Hanteln bis unter die Knie führen, aufrichten und die Hanteln auf die Schultern bringen. Leicht in die Knie federn und mit Schwung aus den Beinen über den Kopf drücken. Kontrolliert zurück auf die Schultern und vor die Oberschenkel.',
     cues: ['Rücken gerade beim Kreuzheben.', 'Oben Rumpf fest, kein Hohlkreuz.'],
     view: OVERHEAD, props: [{ t: 'db' }],
+    seq: [0, 1, 0, 2, 3, 4, 2], key: 4,
     poses: [
-      { hp: [41, 52], tr: 80, a: [50, 90], ua: 180, fa: 180 },
-      { ...STAND, ua: 2, fa: 0 },
+      { ...STAND, a: [50, 90] },
+      { hp: [41, 52], tr: 80, a: [50, 90], ua: 208, fa: 208 },
+      { ...STAND, a: [50, 90], ua: 160, fa: 5 },
+      { via: true, hp: [46, 54], tr: 6, a: [50, 90], ua: 166, fa: 11 },
+      { ...STAND, a: [50, 90], ua: 2, fa: 0 },
     ],
   },
   {
@@ -552,8 +586,10 @@ export const EXERCISES = [
     how: 'Hanteln vor den Oberschenkeln, Knie leicht gebeugt. Hüfte nach hinten schieben und die Hanteln an den Beinen bis unter die Knie führen. In der Vorbeuge einmal zur Hüfte rudern, Hanteln absenken und aufrichten.',
     cues: ['Rücken bleibt gerade.', 'Schulterblätter beim Rudern zusammen.'],
     props: [{ t: 'db' }],
+    seq: [0, 1, 2, 1], key: 2,
     poses: [
       STAND,
+      { hp: [41, 52], tr: 78, a: [50, 90], ua: 206, fa: 206 },
       { hp: [41, 52], tr: 78, a: [50, 90], ua: 240, fa: 180 },
     ],
   },
@@ -562,9 +598,14 @@ export const EXERCISES = [
     how: 'Hanteln neben den Füßen. In die Hocke, Hände auf die Hanteln und mit den Füßen in den Liegestütz springen. Füße wieder heranspringen, mit den Hanteln aufstehen und sie über den Kopf drücken. Hanteln absetzen und von vorn.',
     cues: ['Im Stütz Körper gerade.', 'Schwerer: unten ein Liegestütz.'],
     view: OVERHEAD, props: [{ t: 'db', both: false }],
+    seq: [0, 1, 2, 1, 0, 3, 4, 5, 4, 3], key: 5,
     poses: [
-      { ...PUSH_UP },
-      { ...STAND, ua: 2, fa: 0 },
+      { hp: [52, 70], tr: 70, a: [66, 90], w: [76, 88] },
+      { via: true, hp: [49, 64], tr: 80, a: [40, 84], w: [76, 88] },
+      { ...PUSH_UP, w: [76, 88] },
+      { via: true, hp: [66, 50], tr: 0, a: [66, 90], ua: 180, fa: 180 },
+      { via: true, hp: [66, 50], tr: 0, a: [66, 90], ua: 160, fa: 5 },
+      { hp: [66, 50], tr: 0, a: [66, 90], ua: 2, fa: 0 },
     ],
   },
   {
@@ -572,9 +613,14 @@ export const EXERCISES = [
     how: 'Hantel senkrecht vor der Brust. Eine Goblet-Kniebeuge machen, aufstehen, dann je einen Ausfallschritt rückwärts links und rechts. Diese Folge ist eine Wiederholung.',
     cues: ['Oberkörper aufrecht.', 'Hantel bleibt eng an der Brust.'],
     props: [{ t: 'db', both: false }],
+    seq: [0, 1, 0, 2, 3, 2, 0, 4, 5, 4], key: 3,
     poses: [
-      { hp: [37, 68], tr: 35, a: [50, 90], w: [63, 44] },
-      { hp: [50, 70], tr: 2, a: [62, 90], a2: [32, 90], w: [62, 46] },
+      { hp: [50, 50], tr: 0, a: [50, 90], a2: [50, 90], w: [61, 30] },
+      { hp: [37, 68], tr: 35, a: [50, 90], a2: [50, 90], w: [63, 44] },
+      { via: true, hp: [46, 53], tr: 1, a: [50, 90], a2: [36, 84], w: [57, 31] },
+      { hp: [38, 70], tr: 2, a: [50, 90], a2: [20, 90], w: [50, 46] },
+      { via: true, hp: [46, 53], tr: 1, a: [36, 84], a2: [50, 90], w: [57, 31] },
+      { hp: [38, 70], tr: 2, a: [20, 90], a2: [50, 90], w: [50, 46] },
     ],
   },
   {
@@ -614,8 +660,10 @@ export const EXERCISES = [
     how: 'Aufrecht stehen, Hanteln neben dem Körper. Seitlich bis auf Schulterhöhe heben, oben vor dem Körper zusammenführen und nach vorn absenken. Die nächste Wiederholung umgekehrt: nach vorn heben, oben zur Seite öffnen, seitlich absenken.',
     cues: ['Leichtes Gewicht.', 'Arme leicht gebeugt, kein Schwung.'],
     props: [{ t: 'db' }],
+    seq: [0, 1, 2], key: 1,
     poses: [
-      { ...STAND, ua: 88, fa: 95, ua2: 272, fa2: 265 },
+      { ...STAND, ua: 165, fa: 168, ua2: 195, fa2: 192 },
+      { flat: true, ...STAND, ua: 88, fa: 95, ua2: 272, fa2: 265 },
       { ...STAND, ua: 90, fa: 88, ua2: 90, fa2: 88 },
     ],
   },
@@ -722,9 +770,11 @@ export const EXERCISES = [
     id: 'push-plank', name: 'Push Plank (Up-Down)', equip: [], muscles: 'Rumpf · Schultern · Trizeps', mode: 'reps',
     how: 'Unterarmstütz. Erst eine, dann die andere Hand aufsetzen und in den hohen Stütz drücken. Arm für Arm zurück auf die Unterarme. Die Startseite bei jeder Wiederholung wechseln.',
     cues: ['Hüfte ruhig halten, nicht schaukeln.', 'Füße etwas breiter für mehr Stabilität.'],
+    seq: [0, 1, 2, 1], key: 2, alt: true,
     poses: [
-      { hp: [46.8, 80.6], tr: 76.4, a: [8, 90], ua: 180, fa: 90 },
-      { ...PUSH_UP, a: [8, 90], hp: [46, 74], w: [72, 90] },
+      { hp: [46.8, 80.6], tr: 76.4, a: [8, 90], ua: 180, fa: 90, ua2: 180, fa2: 90 },
+      { hp: [46.4, 77.3], tr: 72, a: [8, 90], w: [72, 90], w2: [86, 89] },
+      { ...PUSH_UP, a: [8, 90], hp: [46, 74], w: [72, 90], w2: [72, 90] },
     ],
   },
   {
@@ -762,8 +812,8 @@ export const EXERCISES = [
     cues: ['Gesäß angespannt, Rumpf aufrecht.', 'Nicht zur Seite lehnen.'],
     view: OVERHEAD, props: [{ t: 'db', both: false }],
     poses: [
-      { hp: [46, 69], tr: 0, a: [62, 90], th2: 182, sh2: 268, ua: 160, fa: 5, ua2: 180, fa2: 170 },
-      { hp: [46, 69], tr: 0, a: [62, 90], th2: 182, sh2: 268, ua: 2, fa: 0, ua2: 180, fa2: 170 },
+      { hp: [46, 69], tr: 0, th: 182, sh: 268, a2: [62, 90], ua: 160, fa: 5, ua2: 180, fa2: 170 },
+      { hp: [46, 69], tr: 0, th: 182, sh: 268, a2: [62, 90], ua: 2, fa: 0, ua2: 180, fa2: 170 },
     ],
   },
   {
@@ -791,7 +841,12 @@ export const EXERCISES = [
     how: 'Aufrecht stehen, Hanteln im Untergriff neben dem Körper. Bizepscurl bis zur Schulter, dann die Hanteln eindrehen und in einer drehenden Bewegung über den Kopf drücken. Auf demselben Weg zurück: herabdrehen auf Schulterhöhe, dann ablassen.',
     cues: ['Kein Schwung aus dem Rücken.', 'Oben kein Hohlkreuz.'],
     view: OVERHEAD, props: [{ t: 'db' }],
-    poses: [{ ...STAND, ua: 172 }, { ...STAND, ua: 2, fa: 0 }],
+    seq: [0, 1, 2, 1], key: 2,
+    poses: [
+      { ...STAND, ua: 172 },
+      { ...STAND, ua: 165, fa: 20 },
+      { ...STAND, ua: 2, fa: 0 },
+    ],
   },
   {
     id: 'zottman-curl', name: 'Zottman Curl', equip: ['kh'], muscles: 'Bizeps · Unterarm', mode: 'reps',
@@ -815,7 +870,13 @@ export const EXERCISES = [
     how: 'Aufrecht stehen, Hanteln im Untergriff. Bizepscurl zur Schulter, Hanteln über den Kopf strecken und hinter dem Kopf absenken. Wieder strecken, zur Schulter zurückführen und ablassen.',
     cues: ['Beim Trizepsteil Ellbogen eng.', 'Rumpf fest, kein Hohlkreuz.'],
     view: OVERHEAD, props: [{ t: 'db' }],
-    poses: [{ ...STAND, ua: 165, fa: 20 }, { ...STAND, ua: 352, fa: 190 }],
+    seq: [0, 1, 2, 3, 2, 1], key: 3,
+    poses: [
+      { ...STAND, ua: 172 },
+      { ...STAND, ua: 165, fa: 20 },
+      { ...STAND, ua: 2, fa: 0 },
+      { ...STAND, ua: 352, fa: 190 },
+    ],
   },
 
   // Rumpf
@@ -823,9 +884,10 @@ export const EXERCISES = [
     id: 'dead-bug', name: 'Dead Bug', equip: [], muscles: 'Rumpf', mode: 'reps',
     how: 'Rückenlage, Arme senkrecht nach oben, Knie über der Hüfte im rechten Winkel. Gegengleich einen Arm hinter den Kopf und das andere Bein gestreckt knapp über den Boden senken. Zurück zur Mitte und Seite wechseln.',
     cues: ['Unterer Rücken bleibt am Boden.', 'Langsam ausatmen beim Senken.'],
+    alt: true,
     poses: [
-      { hp: [52, 84], tr: 270, hd: 270, th: 0, sh: 90, ua: 0, fa: 0 },
-      { hp: [52, 84], tr: 270, hd: 270, th: 0, sh: 90, th2: 82, sh2: 82, ua: 0, fa: 0, ua2: 275, fa2: 275 },
+      { hp: [52, 84], tr: 270, hd: 270, th: 0, sh: 90, th2: 0, sh2: 90, ua: 0, fa: 0, ua2: 0, fa2: 0 },
+      { hp: [52, 84], tr: 270, hd: 270, th: 0, sh: 90, th2: 82, sh2: 82, ua: 275, fa: 275, ua2: 0, fa2: 0 },
     ],
   },
   {
@@ -882,9 +944,11 @@ export const EXERCISES = [
     how: 'Mit Blick zum Ankerpunkt stehen, Griffe vor dem Körper. Ein Bein diagonal hinter das andere setzen und tief absenken wie bei einem Knicks. Über das vordere Bein aufstehen. Erst alle Wiederholungen auf einer Seite.',
     cues: ['Vorderes Knie bleibt über dem Fuß.', 'Hüfte bleibt nach vorn gerichtet.'],
     props: [{ t: 'band', from: [92, 20] }],
+    seq: [0, 1, 2, 1], key: 2,
     poses: [
-      { ...STAND, w: [92, 20] },
-      { hp: [46, 68], tr: 10, a: [60, 90], a2: [32, 90], w: [92, 20] },
+      { hp: [56, 50], tr: 0, a: [56, 90], a2: [56, 90], w: [92, 20] },
+      { via: true, hp: [51, 54], tr: 4, a: [56, 90], a2: [42, 84], w: [92, 20] },
+      { hp: [42, 68], tr: 10, a: [56, 90], a2: [28, 90], w: [92, 20] },
     ],
   },
   {
@@ -924,8 +988,8 @@ export const EXERCISES = [
     t: { schulter: 1, oruecken: 0.5 },
     how: 'Aufrecht stehen und einen Arm gestreckt quer vor die Brust führen. Mit der anderen Hand oberhalb des Ellbogens sanft heranziehen und halten. Danach die Seite wechseln.',
     cues: ['Schultern locker und tief lassen.', 'Oberkörper nicht mitdrehen.'],
-    from: { w: null, w2: null, ua: 180, fa: 180, ua2: 180, fa2: 180 },
-    poses: [{ ...STAND, w: [66, 24], w2: [58, 25] }],
+    from: { w2: null, ua: 180, fa: 180, ua2: 180, fa2: 180 },
+    poses: [{ ...STAND, ua: 92, fa: 92, w2: [62, 25] }],
   },
   {
     id: 'bizeps-dehnung', name: 'Bizeps- und Unterarmdehnung', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Bizeps · Unterarm', mode: 'time', side: true,
@@ -1048,15 +1112,15 @@ export const EXERCISES = [
     t: { gesaess: 1, uruecken: 0.3 },
     how: 'Rückenlage, einen Fuß auf das andere Knie legen. Das untere Bein anheben, den Oberschenkel mit beiden Händen zur Brust ziehen und halten. Danach die Seite wechseln.',
     cues: ['Kopf und Schultern bleiben entspannt am Boden.', 'Knie des oberen Beins sanft nach außen öffnen.'],
-    from: { th2: 45, sh2: 150, w: null, w2: null, ua: 90, fa: 90, ua2: 90, fa2: 90 },
-    poses: [{ hp: [52, 84], tr: 270, hd: 270, th: 55, sh: 165, th2: 20, sh2: 95, w: [56, 67], w2: [57, 68] }],
+    from: { th2: 45, sh2: 150, a: [66, 69], ab: 1, w: null, w2: null, ua: 90, fa: 90, ua2: 90, fa2: 90 },
+    poses: [{ hp: [52, 84], tr: 270, hd: 270, a: [46, 64], ab: 1, th2: 340, sh2: 75, w: [47, 73], w2: [48, 74] }],
   },
   {
     id: 'hamstring-liegend', name: 'Oberschenkel hinten liegend', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Hintere Oberschenkel · Wade', mode: 'time', side: true,
     t: { hamstring: 1, wade: 0.3 },
     how: 'Rückenlage, ein Bein gestreckt nach oben heben und ein Handtuch oder Band um die Fußsohle legen. Das Bein sanft zu dir ziehen und halten, das andere Bein bleibt lang am Boden. Danach die Seite wechseln.',
     cues: ['Becken bleibt am Boden.', 'Leichter: Knie leicht gebeugt.'],
-    props: [{ t: 'band', from: [54, 45] }],
+    props: [{ t: 'band', from: 'a' }],
     from: { th: 55, sh: 55 },
     poses: [{ hp: [52, 84], tr: 270, hd: 270, th: 5, sh: 5, th2: 90, sh2: 90, w: [44, 62], w2: [45, 63] }],
   },
@@ -1089,9 +1153,9 @@ export const EXERCISES = [
     t: { wade: 1 },
     how: 'Mit dem Fußballen auf eine Stufe stellen, an Wand oder Geländer festhalten, das andere Bein locker anheben. Das Standbein gestreckt lassen, die Ferse langsam unter die Stufe sinken lassen und halten. Danach die Seite wechseln.',
     cues: ['Langsam absenken, nicht wippen.', 'Oberkörper aufrecht.'],
-    view: '0 -8 100 100', props: [{ t: 'bench', x: 46, y: 81, w: 22 }, { t: 'wall', x: 84 }],
-    from: { hp: [52, 38] },
-    poses: [{ hp: [52, 42], tr: 0, a: [53, 82], th2: 172, sh2: 200, w: [83, 26], ua2: 180, fa2: 180 }],
+    view: '0 -8 100 100', props: [{ t: 'bench', x: 56, y: 81, w: 20 }, { t: 'wall', x: 76 }],
+    from: { hp: [52, 41], a: [53, 81], fd: 90 },
+    poses: [{ hp: [52.6, 44.6], tr: 0, a: [53.6, 84.6], fd: 51, th2: 172, sh2: 200, w: [75, 26], ua2: 180, fa2: 180 }],
   },
   {
     id: 'knie-zur-brust', name: 'Knie zur Brust', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Unterer Rücken · Gesäß', mode: 'time',
