@@ -1,5 +1,6 @@
 // Lokale Datenhaltung (localStorage, ein JSON-Dokument)
 import { EQUIPMENT } from './exercises.js';
+import { STRETCH_SIZES, HOLD_MIN, HOLD_MAX } from './stretch.js';
 
 const KEY = 'kraftkatalog.v1';
 
@@ -60,12 +61,45 @@ export function exportJSON() {
   return JSON.stringify(rest, null, 2);
 }
 
+// Einstellungen, die der Import übernimmt – mit Prüfung. Fehlt ein Feld (ältere Exporte) oder passt der Wert nicht,
+// bleibt der vorhandene stehen. Neue Felder aus defaults() hier ergänzen. `active` wird nie übernommen.
+const isBool = (v) => typeof v === 'boolean';
+const isNum = (min, max) => (v) => Number.isFinite(v) && v >= min && v <= max;
+const oneOf = (...list) => (v) => list.includes(v);
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const isStrings = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+const FIELDS = {
+  equip: isStrings,
+  sound: isBool,
+  theme: oneOf('system', 'light', 'dark'),
+  design: (v) => typeof v === 'string', // unbekanntes Design setzt app.js auf Flow
+  autopilot: isBool,
+  setup: isNum(0, 20),
+  muscles: isStrings,
+  catKind: oneOf('kraft', 'dehnen'),
+  planFilter: oneOf('alle', 'kraft', 'dehnen'),
+  stretchOffer: isBool,
+  stretchHold: isNum(HOLD_MIN, HOLD_MAX),
+  stretchSize: oneOf(...STRETCH_SIZES.map((z) => z.id)),
+  stretchRot: (v) => Number.isInteger(v) && v >= 0,
+  hints: isObj,
+};
+const isTempo = isNum(1, 8);
+const pick = (obj, ok) => Object.fromEntries(Object.entries(obj).filter(([k, v]) => ok(v, k)));
+
 export function importJSON(text) {
   const data = JSON.parse(text);
-  if (!Array.isArray(data.plans) || !Array.isArray(data.history)) throw new Error('Unbekanntes Format');
+  if (!Array.isArray(data?.plans) || !Array.isArray(data.history)) throw new Error('Unbekanntes Format');
   state.plans = data.plans;
   state.history = data.history;
-  if (Array.isArray(data.equip)) state.equip = data.equip;
+  for (const [key, ok] of Object.entries(FIELDS)) if (ok(data[key])) state[key] = data[key];
+  if (isObj(data.tempo)) state.tempo = pick(data.tempo, isTempo);
+  if (isObj(data.drafts)) {
+    state.drafts = data.drafts;
+    if (state.active) delete state.active.tempDraft; // sonst würde das Trainingsende einen importierten Entwurf verwerfen
+  }
+  // Entwürfe ohne zugehörigen Plan sind nicht erreichbar
+  state.drafts = pick(state.drafts || {}, (d, id) => Array.isArray(d?.items) && state.plans.some((p) => p?.id === id));
   save();
 }
 

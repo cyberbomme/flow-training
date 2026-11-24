@@ -43,6 +43,7 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Version steht nur in `js/version.js` (Anzeige in *Einstellungen*, Cache-Name im Service Worker). Bei jedem Deploy hochzählen.
 - Bei neuen Dateien `sw.js` → `SHELL` ergänzen. SW-Strategie: Netz zuerst (3 s), sonst Cache; neue Version lädt die App sofort neu.
 - localStorage-Schlüssel `kraftkatalog.v1` nicht umbenennen (bestehende Daten auf dem iPhone).
+- Neues Feld in `defaults()` (`js/store.js`) auch in `FIELDS` eintragen, sonst übernimmt der Import es nicht.
 
 ## Pläne & Supersets
 - Beispielpläne als Vorlagen in `js/templates.js` (Kurzform ex/ss/rest). „Übernehmen“ kopiert mit neuen IDs, Herkunft in `plan.tpl`.
@@ -116,11 +117,6 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   - HealthKit ist nur für native Apps zugänglich, nicht für die PWA. Weg (2026-11-24): als Teil der nativen App, s. u.
     Alternative ohne App bliebe ein Kurzbefehl (`shortcuts://run-shortcut?name=…&input=text&text=…`), ungeprüft.
   - Zu klären: ob Strava bzw. WHOOP Trainings ohnehin nach Apple Health weiterreichen (dann reicht evtl. ein Weg).
-- **Import-Lücke schließen** (gefunden 2026-11-24, noch nicht gebaut; Voraussetzung für den Umzug in die native App):
-  - `exportJSON` schreibt alles außer `active`, `importJSON` (`js/store.js`) übernimmt nur `plans`, `history`, `equip`.
-    Es fehlen `tempo`, `drafts`, `autopilot`, `setup`, `stretch*`, `sound`, `design`, `theme` und die Filter. Betrifft auch die PWA.
-  - Lösung: alle bekannten Felder mit passendem Typ übernehmen, fehlende (ältere Exporte) unverändert lassen; Design/Hell-Dunkel danach
-    sofort anwenden; Rückfrage vor dem Import nennt auch die Einstellungen.
 - **Native App für iPhone, danach Android** (Wunsch 2026-11-19, Konzept vom Besitzer bestätigt 2026-11-24, noch nicht gebaut):
   - **Prinzip:** Capacitor-Hülle, kein Neuschreiben in Swift/Kotlin. Eine Codebasis für Web, iOS und Android, gemeinsam weiterentwickelt.
     Die Web-App auf GitHub Pages bleibt (Teilen im privaten Umfeld) und verhält sich gleich. Entwicklung auf Branch `ios-app`.
@@ -135,7 +131,7 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
     2. Hülle anlegen (½ Tag): `@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`; `npx cap init … --web-dir www`, `npx cap add ios`; auf dem iPhone starten.
     3. Code anpassen (1–2 Tage), für zuverlässigen Betrieb nötig, nicht für den ersten Start:
        Daten in native Datei statt `localStorage` (iOS kann es bei Platzmangel löschen), vor dem Start laden, Web unverändert ·
-       Import-Lücke (s. o.) · Service Worker und „Nach Update suchen“ in der App abschalten (die Prüfung auf `localhost` in `js/app.js`
+       Service Worker und „Nach Update suchen“ in der App abschalten (die Prüfung auf `localhost` in `js/app.js`
        trifft auch in Capacitor zu) · lokale Mitteilung zum Pausenende (bei gesperrtem Display kein Ton), bei Pause/Überspringen löschen ·
        Export per Teilen testen, sonst Share-Plugin. Auf dem Gerät prüfen: Ton (stumm, neben Musik), Wachhalten, Safe Areas, Tastatur, Zurück-Wischen.
     4. Apple Health (1–2 Tage): eigenes kleines Swift-Plugin mit `HKWorkoutBuilder`; `@capgo/capacitor-health` 8.13.0 kann Workouts
