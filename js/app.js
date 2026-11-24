@@ -142,12 +142,14 @@ function newItem(exId) {
 const tempoOf = (exId) => db.tempo?.[exId] ?? TEMPO[exId] ?? 3;
 // Übungen mit side: true zählen je Seite – für Zeit und Autopilot doppelt so viele Wiederholungen
 const sidesOf = (exId) => (byId[exId]?.side ? 2 : 1);
+// Zeit-Übung je Seite (Dehnung, Seitstütz): zwei Schritte im Training, rechts und links
+const timedSides = (it) => it.mode === 'time' && byId[it.exId]?.mode === 'time' && !!byId[it.exId].side;
 const STRETCH_PERIOD = 6; // s für einen Animationszyklus einer Dehnung (Einnehmen, Halten, Lösen)
-const amountTxt = (it) => (it.mode === 'time' ? `${it.dur} s${isStretch(byId[it.exId]) && byId[it.exId].side ? ' je Seite' : ''}` : `${it.reps} Wdh.${byId[it.exId]?.side ? ' je Seite' : ''}`);
+const amountTxt = (it) => (it.mode === 'time' ? `${it.dur} s${timedSides(it) ? ' je Seite' : ''}` : `${it.reps} Wdh.${byId[it.exId]?.side ? ' je Seite' : ''}`);
 
 // Geschätzte Dauer: Tempo × Wiederholungen + 10 s Rüstzeit pro Satz
 function planEstimate(p) {
-  const work = (it) => (it.mode === 'time' ? it.dur : it.reps * sidesOf(it.exId) * tempoOf(it.exId) + 10);
+  const work = (it) => (it.mode === 'time' ? (timedSides(it) ? 2 * it.dur + SWITCH : it.dur) : it.reps * sidesOf(it.exId) * tempoOf(it.exId) + 10);
   let s = 0, n = 0, g = 0;
   for (const it of p.items) {
     if (it.type === 'rest') s += it.dur;
@@ -330,12 +332,6 @@ function renderPickBar(planId) {
     <button class="btn primary" data-act="pick-add" data-plan="${planId}">${icon.plus}Hinzufügen (${n})</button></div>` : '';
 }
 
-// Beschreibung → erster Satz als Hinweis, Rest als Checkliste
-function splitDesc(desc) {
-  const s = desc.match(/[^.!?]+[.!?]+/g)?.map((x) => x.trim()) || [desc];
-  return { lead: s[0], points: s.slice(1) };
-}
-
 // Tempo je Übung (Sekunden pro Wiederholung): eine Quelle für Animation, Autopilot und Plandauer
 function tempoField(ex) {
   const v = tempoOf(ex.id), est = TEMPO[ex.id] ?? 3, own = db.tempo?.[ex.id] != null;
@@ -356,15 +352,15 @@ function viewExercise(id) {
   const ex = byId[id];
   if (!ex) return header('Übung') + empty('Diese Übung gibt es nicht (mehr).');
   const st = isStretch(ex), last = st ? null : lastFor(id);
-  const { lead, points } = splitDesc(ex.desc);
-  const kindBadge = st ? (ex.side ? 'Halten · je Seite' : 'Halten') : ex.mode === 'time' ? 'Auf Zeit' : ex.side ? 'Wiederholungen je Seite' : 'Wiederholungen';
+  const cues = ex.cues || [];
+  const kindBadge = st ? (ex.side ? 'Halten · je Seite' : 'Halten') : ex.mode === 'time' ? (ex.side ? 'Auf Zeit · je Seite' : 'Auf Zeit') : ex.side ? 'Wiederholungen je Seite' : 'Wiederholungen';
   const plans = db.plans.filter((p) => isStretchPlan(p) === st);
   return header(ex.name, ['#/katalog', 'Übungen']) + `
     <div class="fig-hero ${st ? 'rose' : ''}" data-anim="${ex.id}"></div>
     <p class="overline">${st ? 'Dehnen · ' : ''}${esc(ex.muscles)}</p>
     <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${kindBadge}</span></div>
-    <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(lead)}</p></div></div>
-    ${points.length ? pill('Worauf ich achte') + `<ul class="checklist">${points.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
+    <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(ex.how)}</p></div></div>
+    ${cues.length ? pill('Worauf ich achte') + `<ul class="checklist">${cues.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
     ${st ? '' : tempoField(ex)}
     ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
     <button class="btn primary big" data-act="add-sheet">${icon.plus}Zu Plan hinzufügen</button>
@@ -568,7 +564,7 @@ function planFields(it, kind) {
   } else {
     h = `<div class="seg"><button class="${it.mode === 'reps' ? 'on' : ''}" data-act="pmode" data-mode="reps">Wiederholungen</button><button class="${it.mode === 'time' ? 'on' : ''}" data-act="pmode" data-mode="time">Dauer</button></div>`;
     if (kind === 'ex') h += pStepper('sets', 'Sätze', it.sets, 1);
-    h += it.mode === 'reps' ? pStepper('reps', 'Wiederholungen', it.reps, 1) : pStepper('dur', 'Dauer (s)', it.dur, 5, 's');
+    h += it.mode === 'reps' ? pStepper('reps', 'Wiederholungen', it.reps, 1) : pStepper('dur', timedSides(it) ? 'Dauer je Seite (s)' : 'Dauer (s)', it.dur, 5, 's');
     h += pStepper('weight', 'Gewicht (kg)', it.weight, 1, 'kg', 'Körper');
     if (kind === 'ex') h += pStepper('rest', 'Satzpause (s)', it.rest, 15, 's');
     else h += `<p class="hint">Runden und Pause gelten für das ganze Superset. Zwischen den Übungen gibt es keine Pause.</p>`;
@@ -583,6 +579,7 @@ function planFields(it, kind) {
 // ── Training ──────────────────────────────────────────────
 // Superset: Runde für Runde alle Übungen nacheinander, Pause erst nach der Runde.
 function buildSteps(items) {
+  const sidesFor = (it) => (timedSides(it) ? [{ side: 'r' }, { side: 'l' }] : [{}]);
   const steps = [];
   let letter = 0, no = 0;
   for (const it of items) {
@@ -590,7 +587,7 @@ function buildSteps(items) {
     if (it.type === 'group') {
       const L = 'ABCDEFGHIJ'[letter++];
       for (let r = 0; r < it.rounds; r++) {
-        it.items.forEach((m, i) => steps.push({ k: 'work', item: m.id, set: r, of: it.rounds, ss: `${L}${i + 1}` }));
+        it.items.forEach((m, i) => { for (const sd of sidesFor(m)) steps.push({ k: 'work', item: m.id, set: r, of: it.rounds, ss: `${L}${i + 1}`, ...sd }); });
         if (r < it.rounds - 1 && it.rest > 0) steps.push({ k: 'rest', dur: it.rest });
       }
       continue;
@@ -602,7 +599,7 @@ function buildSteps(items) {
       continue;
     }
     for (let s = 0; s < it.sets; s++) {
-      steps.push({ k: 'work', item: it.id, set: s });
+      for (const sd of sidesFor(it)) steps.push({ k: 'work', item: it.id, set: s, ...sd });
       if (s < it.sets - 1 && it.rest > 0) steps.push({ k: 'rest', dur: it.rest });
     }
   }
@@ -668,11 +665,13 @@ function enterStep(autoStart) {
       if (A.weightFor) delete A.weightFor[it.id];
       const afterRest = before?.k === 'rest';
       // Zeit-Übungen laufen nach einer Pause von selbst los, im Autopilot immer – auch Wiederholungen.
-      const auto = autoStart && (db.autopilot || (afterRest && it.mode === 'time'));
+      // Zweite Seite einer Zeit-Übung: startet von selbst, Vorlauf zum Seitenwechsel
+      const second = step.side === 'l';
+      const auto = autoStart && (db.autopilot || second || (afterRest && it.mode === 'time'));
       const counted = it.mode === 'time' || db.autopilot;
       if (counted) {
         // Vorlauf nur im Autopilot und nur, wenn keine Pause davor lag (die endet schon mit 3-2-1)
-        const setup = db.autopilot && auto && !afterRest ? (db.setup ?? 5) : 0;
+        const setup = second ? SWITCH : db.autopilot && auto && !afterRest ? (db.setup ?? 5) : 0;
         const work = it.mode === 'time' ? it.dur : Math.max(1, A.cur.reps) * sidesOf(it.exId) * tempoOf(it.exId);
         A.timer = T.makeTimer(setup + work);
         A.timer.setup = setup;
@@ -760,11 +759,11 @@ function viewTraining() {
   return trScreen({
     hero: `<div class="fig-tr ${counted ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${counted ? figRing() : ''}</div>`,
     title: esc(ex.name),
-    sub: `${setLine} · Ziel ${target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}`,
+    sub: `${step.side ? `${sideTxt(step)} · ` : ''}${setLine} · Ziel ${step.side ? `${it.dur} s` : target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}`,
     card1: counted ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1),
     card2: stepper('weight', 'Gewicht (kg)', A.cur.weight, 1, 'Körper'),
     kind: 'work',
-    main: trMain('done', 'Satz erledigt', icon.check),
+    main: trMain('done', step.side === 'r' ? 'Seite erledigt' : 'Satz erledigt', icon.check),
     next: nextCard(),
   }) + sheet;
 }
@@ -857,6 +856,9 @@ function nextCard() {
     if (isStretch(ex)) {
       if (cur.k === 'work' && cur.item === nx.item) over = 'Danach';
       sub = [sideTxt(nx), `${it.dur} s`].filter(Boolean).join(' · ');
+    } else if (nx.side) {
+      if (nx.side === 'l') over = 'Danach direkt';
+      sub = [sideTxt(nx), nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`, `${it.dur} s`].join(' · ');
     } else sub = `${nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`} · ${amountTxt(it)}${it.weight ? ` · ${fmtNum(it.weight)} kg` : ''}`;
   }
   return `<div class="next-card">${ic}<div class="next-txt"><small class="next-over">${over}</small><b>${title}</b><small>${sub}</small></div></div>`;
@@ -895,7 +897,7 @@ function timerState(t) {
     setupLeft: Math.max(0, r - work),
     frac: work > 0 ? wr / work : 0,
     value: t.reps ? String(Math.min(t.reps, Math.ceil(wr / t.tempo))) : T.fmt(wr),
-    label: r - work > 0.05 ? `${db.active?.stretch ? 'Einnehmen' : 'Los in'} ${Math.ceil(r - work)} s` : t.reps ? 'Wiederholungen' : db.active?.stretch ? 'Halten' : 'Zeit',
+    label: r - work > 0.05 ? `${db.active?.stretch ? 'Einnehmen' : db.active?.steps[db.active.idx]?.side === 'l' ? 'Seite wechseln' : 'Los in'} ${Math.ceil(r - work)} s` : t.reps ? 'Wiederholungen' : db.active?.stretch ? 'Halten' : 'Zeit',
   };
 }
 function figRing() {

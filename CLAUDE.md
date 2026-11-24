@@ -34,10 +34,14 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Katalog: eine wischbare Filterzeile (Ausrüstung als Sheet, Muskelgruppen mit Mehrfachauswahl in `db.muscles`).
 
 ## Arbeitsweise
+- Übungstexte (Wunsch 2026-11-19): `how` = „So geht’s“, vollständiger Ablauf inkl. Zählweise/Seitenwechsel; `cues` = „Worauf ich achte“, nur Stil, Technik,
+  Varianten (optional, ohne Inhalt fällt der Bereich weg). Text und Animation müssen zusammenpassen.
 - Neue Übungen in `js/exercises.js`; Figuren danach per Playwright-Screenshot prüfen (`~/pw-venv`).
   Muskelgruppen (Filter, Plan-Icons) werden automatisch aus `muscles` abgeleitet (`MUSCLE_GROUPS`) – Begriffe dort ggf. ergänzen.
   `side: true` = Wiederholungen je Seite: Anzeige „Wdh. je Seite“, Autopilot und Plandauer zählen doppelt (`sidesOf`).
-  Fehlende Gelenkwinkel in einer Pose = Glied hängt senkrecht (Vorgabe in `figure.js`).
+  Zeit-Übung mit `side: true` (Seitstütz): zwei Schritte im Training (rechts, links) mit 5 s „Seite wechseln“, ein Satz im Verlauf (Dauer je Seite).
+  Fehlende Gelenkwinkel in einer Pose = Glied hängt senkrecht (Vorgabe in `figure.js`). Zwischenposen über Gelenkwinkel, nicht Punkte (`inbetween`),
+  damit Glieder ihre Länge behalten; `front: true` = Frontalansicht (Arme zur Seite, kürzester Weg).
 - Plan-Icons automatisch (`js/planicon.js`): erst Stichwort im Titel (Zyklusphasen, HIIT, Mobilität, Regeneration, Klettern,
   Core, Beine, Oberkörper, Ganzkörper, Kraft), sonst aus Muskelgruppen/Zeitanteil der Übungen.
 - Version steht nur in `js/version.js` (Anzeige in *Einstellungen*, Cache-Name im Service Worker). Bei jedem Deploy hochzählen.

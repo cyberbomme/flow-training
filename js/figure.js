@@ -52,10 +52,45 @@ export function solve(p) {
   return { hp, n, h, e, w, e2, w2, k, a, k2, a2, f, f2 };
 }
 
-function lerpJ(A, B, t) {
-  const o = {};
-  for (const key in A) o[key] = [lerp(A[key][0], B[key][0], t), lerp(A[key][1], B[key][1], t)];
-  return o;
+// Zwischenpose: Gelenkwinkel (nicht Punkte) verschieben, damit alle Glieder ihre Länge behalten.
+// Hände/Füße mit festem Ziel in beiden Posen folgen dem Ziel (IK), Füße auch, wenn nur eine Pose ein Ziel hat (Bodenkontakt).
+const angOf = (p, q) => (Math.atan2(q[0] - p[0], p[1] - q[1]) * 180) / Math.PI;
+const wrap = (d, min) => ((((d - min) % 360) + 360) % 360) + min; // auf [min, min + 360) bringen
+const lerpAng = (a, b, t) => a + wrap(b - a, -180) * t;
+const lerpPt = (p, q, t) => [lerp(p[0], q[0], t), lerp(p[1], q[1], t)];
+
+// Arm in Seitenansicht: Schulter relativ zum Rumpf nie durch den Rücken (von hinten-unten über vorn bis über den Kopf),
+// Ellbogen nur beugen/strecken. ex.front (Frontalansicht, Arm zur Seite): einfach der kürzere Weg.
+function armAng(A, B, t, front, trA, trB) {
+  if (front) return { up: lerpAng(A.up, B.up, t), lo: lerpAng(A.lo, B.lo, t) };
+  const sh = lerp(wrap(A.up - trA, -70), wrap(B.up - trB, -70), t);
+  const el = lerp(wrap(A.up - A.lo, -60), wrap(B.up - B.lo, -60), t);
+  const up = sh + lerpAng(trA, trB, t);
+  return { up, lo: up - el };
+}
+
+function inbetween(ex, pA, pB, A, B, t) {
+  if (t <= 0) return A;
+  if (t >= 1) return B;
+  const hp = lerpPt(A.hp, B.hp, t), tr = lerpAng(pA.tr, pB.tr, t);
+  const p = { hp, tr, hd: lerpAng(pA.hd ?? pA.tr, pB.hd ?? pB.tr, t), ff: pA.ff, ff2: pA.ff2 };
+  const arm = (far) => {
+    const spec = (q) => (far && (q.ua2 != null || q.w2) ? [q.w2, q.wb2] : [q.w, q.wb]);
+    const [wA, bA] = spec(pA), [wB, bB] = spec(pB), s = far ? '2' : '';
+    if (wA && wB) return { ['w' + s]: lerpPt(wA, wB, t), ['wb' + s]: bA ?? bB };
+    const of = (J) => ({ up: angOf(J.n, J['e' + s]), lo: angOf(J['e' + s], J['w' + s]) });
+    const a = armAng(of(A), of(B), t, ex.front, pA.tr, pB.tr);
+    return { ['ua' + s]: a.up, ['fa' + s]: a.lo };
+  };
+  const leg = (far) => {
+    const spec = (q) => (far && (q.th2 != null || q.a2) ? [q.a2, q.ab2] : [q.a, q.ab]);
+    const [tA, bA] = spec(pA), [tB, bB] = spec(pB), s = far ? '2' : '';
+    if (tA || tB) return { ['a' + s]: lerpPt(tA || A['a' + s], tB || B['a' + s], t), ['ab' + s]: tA ? bA : bB };
+    const of = (J) => [angOf(J.hp, J['k' + s]), angOf(J['k' + s], J['a' + s])];
+    const [t1, s1] = of(A), [t2, s2] = of(B);
+    return { ['th' + s]: lerpAng(t1, t2, t), ['sh' + s]: lerpAng(s1, s2, t) };
+  };
+  return solve(Object.assign(p, arm(false), arm(true), leg(false), leg(true)));
 }
 
 const f1 = (x) => Math.round(x * 10) / 10;
@@ -148,9 +183,9 @@ export function figureStatic(ex, fit = false) {
   return frame(ex, propsSVG(props, P[0], true) + bodySVG(P[0], true) + propsSVG(props, P[1]) + bodySVG(P[1]), fit);
 }
 
-function figureAt(ex, t) {
+export function figureAt(ex, t) {
   const P = posesOf(ex);
-  const J = P.length === 1 ? P[0] : lerpJ(P[0], P[1], t);
+  const J = P.length === 1 ? P[0] : inbetween(ex, ex.poses[0], ex.poses[1], P[0], P[1], t);
   return propsSVG(ex.props || [], J) + bodySVG(J);
 }
 
