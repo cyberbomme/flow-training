@@ -102,6 +102,9 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Pause läuft immer von selbst: Karte 1 = −15 s / +15 s, Karte 2 = Gewicht für den nächsten Satz (`active.weightFor`), Hauptaktion „Pause beenden ›“
   nimmt den Platz von Überspringen mit ein (kein doppelter Knopf). „Satz erledigt“ speichert den Satz, Überspringen nicht.
 - Abschluss steht im selben Raster (Sätze, Volumen bzw. Zeit unter Spannung, Merksatz).
+- **Ton** (Wunsch 2026-11-24: neben Musik und auch bei stummem iPhone): als Web-App nicht zugleich möglich. WebKit (`AudioSessionIOS.mm`) setzt nie
+  `MixWithOthers`: `transient`/`ambient` = neben Musik, aber Stummschalter gilt; `playback` = trotz Stummschalter, unterbricht aber Musik.
+  Daher `transient`. In der nativen App: Kategorie `playback` mit `mixWithOthers` bzw. `duckOthers`.
 
 ## Backlog
 - **App-Icon auswählen + Logo-Grafik verbessern** (Wunsch 2026-11-18, noch nicht gebaut):

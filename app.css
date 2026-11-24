@@ -74,7 +74,8 @@
 :root[data-design="lavendel"][data-theme="dark"] { --color-bg: #1B191D; --color-surface: #252229; --color-sage: #8C80A0; --color-sage-light: #3D354A; --color-rose: #D4A19C; --color-rose-dark: #D9A5A0; --color-peach: #4A3638; --color-forest: #C6B6DE; --color-text: #EDE9F0; --color-text-muted: #B2ABB8; --color-rose-ink: #E3B2AC; --color-fill: #2F2B34; --color-line: rgba(237, 233, 240, 0.14); --color-on-forest: #1B191D; --color-on-sage: #1B191D; --fig-ghost: #4A4258; --fig-prop: #D4A19C; --fig-equip: #77707E; color-scheme: dark; }
 @media (prefers-color-scheme: dark) { :root[data-design="lavendel"]:not([data-theme="light"]) { --color-bg: #1B191D; --color-surface: #252229; --color-sage: #8C80A0; --color-sage-light: #3D354A; --color-rose: #D4A19C; --color-rose-dark: #D9A5A0; --color-peach: #4A3638; --color-forest: #C6B6DE; --color-text: #EDE9F0; --color-text-muted: #B2ABB8; --color-rose-ink: #E3B2AC; --color-fill: #2F2B34; --color-line: rgba(237, 233, 240, 0.14); --color-on-forest: #1B191D; --color-on-sage: #1B191D; --fig-ghost: #4A4258; --fig-prop: #D4A19C; --fig-equip: #77707E; color-scheme: dark; } }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* manipulation: kein Doppeltipp-Zoom bei schnellem Tippen (+/−); Zoom mit zwei Fingern bleibt */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--color-bg); color: var(--color-text);
@@ -285,7 +286,7 @@ body[data-view="training"] { padding-bottom: calc(env(safe-area-inset-bottom) + 
 .stepper-wrap { display: flex; align-items: center; justify-content: space-between; background: var(--color-surface); border-radius: var(--r-card); padding: 8px 8px 8px 20px; margin-top: 10px; text-align: left; }
 .stepper-wrap > span { color: var(--color-text-muted); font-size: 15px; }
 .stepper { display: flex; align-items: center; gap: 4px; }
-.stepper button { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--color-fill); color: var(--color-text); font: 400 24px/1 var(--font-body); cursor: pointer; }
+.stepper button { -webkit-user-select: none; user-select: none; width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--color-fill); color: var(--color-text); font: 400 24px/1 var(--font-body); cursor: pointer; }
 .stepper input { width: 76px; height: 48px; text-align: center; font: 600 32px/normal var(--font-display); border: 0; background: none; color: var(--color-text); padding: 0; }
 /* leeres Feld: Platzhalter in Textgröße, damit er mittig sitzt */
 .stepper input:placeholder-shown { font: 500 14px/normal var(--font-body); }

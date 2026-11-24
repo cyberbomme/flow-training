@@ -59,6 +59,8 @@ function applyTheme() {
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim();
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
 }
+// Beim Einschalten einmal hören lassen, ob der Ton ankommt
+function soundSample() { if (db.sound) { T.unlockAudio(); T.beep('start'); } }
 // Ton, Design und Hell/Dunkel anwenden – beim Start und nach einem Import
 function applySettings() {
   T.setSound(db.sound);
@@ -1062,7 +1064,12 @@ async function manageWakeLock(on) {
     } else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
   } catch {}
 }
+// Ton im Training bei jeder Berührung freischalten (nach Neuladen, Sperren oder App-Wechsel), nicht nur über die Knöpfe
+for (const type of ['touchend', 'click']) {
+  document.addEventListener(type, () => { if (db.active && db.sound) T.unlockAudio(); }, { capture: true, passive: true });
+}
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') T.wakeAudio();
   if (document.visibilityState === 'visible' && route()[0] === 'training') { manageWakeLock(true); render(); }
 });
 
@@ -1480,7 +1487,7 @@ document.addEventListener('click', (ev) => {
       save(); break;
     case 't-stop': T.reset(A.timer); lastBeep = null; save(); render(); break;
     case 't-add': T.addTime(A.timer, +btn.dataset.s); save(); break;
-    case 'sound': db.sound = !db.sound; T.setSound(db.sound); save(); render(); break;
+    case 'sound': db.sound = !db.sound; T.setSound(db.sound); soundSample(); save(); render(); break;
     case 'exit': if (A?.stretch) endStretch(); else { exitSheet = true; render(); } break;
     case 'exit-cancel': exitSheet = false; render(); break;
     case 'finish': finishTraining(); break;
@@ -1548,7 +1555,7 @@ document.addEventListener('change', (ev) => {
   } else if (t.dataset.act === 'stretch-offer-cb') {
     db.stretchOffer = t.checked; save(); render();
   } else if (t.dataset.act === 'sound-cb') {
-    db.sound = t.checked; T.setSound(db.sound); save();
+    db.sound = t.checked; T.setSound(db.sound); soundSample(); save();
   } else if (t.dataset.act === 'autopilot-cb') {
     db.autopilot = t.checked; save(); render();
     toast(db.autopilot ? 'Autopilot an – gilt ab dem nächsten Satz' : 'Autopilot aus');
