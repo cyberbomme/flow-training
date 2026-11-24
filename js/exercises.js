@@ -531,9 +531,10 @@ export const EXERCISES = [
     how: 'Bauchlage, eine Kurzhantel zwischen den Füßen einklemmen. Unterschenkel langsam bis senkrecht anbeugen und kontrolliert wieder absenken.',
     cues: ['Becken bleibt am Boden.', 'Alternative: Gleitpads in Rückenlage.'],
     props: [{ t: 'db', at: 'f' }],
+    view: '-6 -8 108 108',
     poses: [
-      { hp: [50, 86], tr: 268, hd: 280, th: 92, sh: 92, ua: 230, fa: 80 },
-      { hp: [50, 86], tr: 268, hd: 280, th: 92, sh: 10, ua: 230, fa: 80 },
+      { hp: [52, 87], tr: 269, hd: 297, th: 92, sh: 92, ua: 265, fa: 270 },
+      { hp: [52, 87], tr: 269, hd: 297, th: 92, sh: 10, ua: 265, fa: 270 },
     ],
   },
   {
