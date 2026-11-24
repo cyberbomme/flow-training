@@ -26,6 +26,11 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - **An / aus:** Schalter (`input.switch` mit `role="switch"`), keine Kästchen.
 - **Listenzeile:** `lrow()` – Kreis-Icon · Titel · eine Unterzeile · rechts ein Element (Chevron, Griff, Play oder Wert).
   Gruppierte Liste (Einstellungen, Sheets): `.listbox` mit `.li`.
+- **Overlay (`.sheet`):** schließt mit x oben rechts (`sheetX`, erstes Element, bleibt beim Scrollen stehen), kein „Abbrechen/Schließen/Fertig“ dazu.
+  Ist Schließen selbst eine Antwort auf eine Frage („Weiter trainieren“, „Überspringen“), steht stattdessen nur der benannte Knopf, kein x. Nie beides.
+  Kein Balken zum Herunterschieben (kollidiert mit dem Scrollen). Antippen des Hintergrunds schließt immer. (Entschieden 2026-11-24.)
+- **Übungsinfo** (Konzept A, 2026-11-24): Figur mit „i“ antippen (`infoTap`) öffnet die Anleitung – Plan-Editor, Training, „Als Nächstes“.
+  Liegt außerhalb von `main`, der Timer läuft weiter, Restzeit im Overlay.
 - Plan-Editor: „···“ oben rechts bleibt immer (Kopieren, Verwerfen, Löschen), wird nie durch „Speichern“ ersetzt.
   Feste Aktionsleiste unten; mit Entwurf „Speichern · Starten“. Starten fragt: „Speichern & starten“ oder „Ohne Speichern starten“ –
   ohne Speichern wird der Entwurf nach Ende oder Abbruch des Trainings automatisch verworfen (`active.tempDraft`).
@@ -34,10 +39,19 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - Katalog: eine wischbare Filterzeile (Ausrüstung als Sheet, Muskelgruppen mit Mehrfachauswahl in `db.muscles`).
 
 ## Arbeitsweise
+- Übungstexte (Wunsch 2026-11-19): `how` = „So geht’s“, vollständiger Ablauf inkl. Zählweise/Seitenwechsel; `cues` = „Worauf ich achte“, nur Stil, Technik,
+  Varianten (optional, ohne Inhalt fällt der Bereich weg). Text und Animation müssen zusammenpassen.
 - Neue Übungen in `js/exercises.js`; Figuren danach per Playwright-Screenshot prüfen (`~/pw-venv`).
   Muskelgruppen (Filter, Plan-Icons) werden automatisch aus `muscles` abgeleitet (`MUSCLE_GROUPS`) – Begriffe dort ggf. ergänzen.
   `side: true` = Wiederholungen je Seite: Anzeige „Wdh. je Seite“, Autopilot und Plandauer zählen doppelt (`sidesOf`).
-  Fehlende Gelenkwinkel in einer Pose = Glied hängt senkrecht (Vorgabe in `figure.js`).
+  Zeit-Übung mit `side: true` (Seitstütz): zwei Schritte im Training (rechts, links) mit 5 s „Seite wechseln“, ein Satz im Verlauf (Dauer je Seite).
+  Fehlende Gelenkwinkel in einer Pose = Glied hängt senkrecht (Vorgabe in `figure.js`). Zwischenposen über Gelenkwinkel, nicht Punkte (`inbetween`),
+  damit Glieder ihre Länge behalten.
+  Mehr als zwei Posen: `seq` = Reihenfolge je Wiederholung (danach zurück zur ersten), `via: true` = ohne Halt durchlaufen, `key` = Pose fürs Standbild,
+  `alt: true` = jede zweite Wiederholung mit der anderen Seite, `fd` = Fußrichtung,
+  `dur` = Gewicht je Abschnitt, `rev: true` = jede zweite Wiederholung rückwärts. Ansichten `cam: 'front' | 'top'` (Bewegungen zur Seite): Posen als Punkte
+  mit Schulter- und Hüftbreite (`wideSVG`), Hinweis „Von vorn/Von oben“ im Bild. Bewegungen zur Seite nie in die Seitenansicht zwingen.
+  Dehnungen bleiben bei zwei Posen (Training hält bei Phase 0,5). Prüfseite: `docs/figuren-review.html` (nicht im Offline-Cache).
 - Plan-Icons automatisch (`js/planicon.js`): erst Stichwort im Titel (Zyklusphasen, HIIT, Mobilität, Regeneration, Klettern,
   Core, Beine, Oberkörper, Ganzkörper, Kraft), sonst aus Muskelgruppen/Zeitanteil der Übungen.
 - Version steht nur in `js/version.js` (Anzeige in *Einstellungen*, Cache-Name im Service Worker). Bei jedem Deploy hochzählen.
