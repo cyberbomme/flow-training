@@ -46,11 +46,8 @@ const DESIGNS = [
   { id: 'nebel', name: 'Nebel', note: 'Nebelgrau, Meer & Petrol', sw: ['#EFF1EF', '#98AEB0', '#D0A7A5', '#2E5E68'] },
   { id: 'lavendel', name: 'Lavendel', note: 'Lavendel, Rosé & Pflaume', sw: ['#F3F0F2', '#A79DB5', '#D3A3A9', '#5B4A72'] },
 ];
-T.setSound(db.sound);
 // Muskelgruppen-Filter: Mehrfachauswahl (früher ein einzelner Wert in db.muscle)
 if (!Array.isArray(db.muscles)) { db.muscles = db.muscle ? [db.muscle] : []; delete db.muscle; save(); }
-// Design „Klassisch“ gibt es nicht mehr
-if (!DESIGNS.some((d) => d.id === db.design)) { db.design = 'flow'; save(); }
 
 // Design (DESIGNS) und Erscheinungsbild ('system' | 'light' | 'dark').
 // Kopie in localStorage für das Inline-Skript im <head> (kein Aufblitzen beim Start).
@@ -62,7 +59,13 @@ function applyTheme() {
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim();
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
 }
-applyTheme();
+// Ton, Design und Hell/Dunkel anwenden – beim Start und nach einem Import
+function applySettings() {
+  T.setSound(db.sound);
+  if (!DESIGNS.some((d) => d.id === db.design)) { db.design = 'flow'; save(); } // z. B. „Klassisch“ gibt es nicht mehr
+  applyTheme();
+}
+applySettings();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
 // ── Hilfen ────────────────────────────────────────────────
@@ -1509,8 +1512,8 @@ document.addEventListener('change', (ev) => {
     toast(db.autopilot ? 'Autopilot an – gilt ab dem nächsten Satz' : 'Autopilot aus');
   } else if (t.id === 'import' && t.files[0]) {
     t.files[0].text().then((txt) => {
-      if (!confirm('Pläne und Verlauf durch den Inhalt der Datei ersetzen?')) return;
-      try { importJSON(txt); toast('Import erfolgreich'); render(); } catch (e) { alert('Import fehlgeschlagen: ' + e.message); }
+      if (!confirm('Pläne, Verlauf und Einstellungen durch den Inhalt der Datei ersetzen?')) return;
+      try { importJSON(txt); applySettings(); toast('Import erfolgreich'); render(); } catch (e) { alert('Import fehlgeschlagen: ' + e.message); }
     });
   }
 });
