@@ -111,22 +111,46 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   - Offen: Zuordnung unserer Übungen zu Stravas `exercise_type`-Kennungen; ob WHOOP daraus Muscular Load berechnet (Community berichtet gemischt);
     OAuth braucht das Client-Secret → eigener Strava-API-Zugang der Besitzerin oder kleiner Server-Proxy. Daten verlassen dann das Gerät.
   - Vorschlag: erst Machbarkeitstest mit einem echten Training (Upload-Skript), dann Einbau.
-- **Apple Health Integration** statt oder ergänzend zu Strava/WHOOP (Wunsch 2026-11-19, noch nicht geprüft, noch nicht gebaut):
-  - Trainings als Workout (Krafttraining, Dauer, ggf. Energie) in Apple Health schreiben; Daten bleiben auf dem Gerät, kein OAuth/Server nötig.
-  - Hürde: HealthKit ist nur für native Apps zugänglich, nicht für eine PWA im Safari/Home-Bildschirm.
-  - Mögliche Wege (zu prüfen): (a) Kurzbefehl (Shortcuts) mit Health-Aktion, aus der App per `shortcuts://run-shortcut?name=…&input=text&text=…`
-    mit den Trainingsdaten aufgerufen; (b) native Hülle (z. B. Capacitor) mit HealthKit-Plugin – bricht mit „kein Build“ und GitHub Pages.
-  - Zu klären: ob Strava bzw. WHOOP Trainings ohnehin nach Apple Health weiterreichen (dann reicht evtl. ein Weg);
-    welche Felder Health für Krafttraining annimmt (einzelne Sätze/Übungen vermutlich nicht).
-- **Native App für iPhone/Android in den App Stores** (Wunsch 2026-11-19, noch nicht gebaut; Weg für Apple Health, s. o.):
-  - GitHub Pages bleibt die Lösung zum Teilen im privaten Umfeld; Store-Apps kommen ergänzend dazu.
-  - Weg: Capacitor-Hülle um den bestehenden Code (ein Code für Web + Apps, Ordner `ios/` und `android/` neu im Repo).
-    Genutzte Browser-Funktionen (localStorage, wakeLock, AudioContext, navigator.share) laufen dort weiter. Kein Neuschreiben in Swift/Kotlin.
-  - Health: HealthKit-Plugin für Capacitor (iOS), Health Connect (Android).
-  - Aufwand/Kosten: Xcode (Mac) bzw. Android Studio; Apple Developer 99 USD/Jahr, Google Play 25 USD einmalig;
-    privates Testen über TestFlight bzw. internen Test-Track ohne öffentliche Veröffentlichung.
-  - Zu beachten: Apple-Richtlinie 4.2 (keine reine Website-Hülle – Offline + HealthKit sprechen dagegen);
-    Datenschutzerklärung und Store-Datenschutzangaben (Gesundheitsdaten, besonders Zyklusphase);
-    Daten unter `kraftkatalog.v1` liegen im Safari-Speicher der PWA → einmaliger Export/Import (z. B. Datei über Teilen) nötig;
-    Store-Versionen müssen gebaut und hochgeladen werden, `git push` reicht dafür nicht.
-  - Vorschlag: Machbarkeitstest (ca. 1–2 Tage) – Capacitor einrichten, auf dem eigenen iPhone starten, ein Training in Apple Health schreiben.
+- **Apple Health Integration** statt oder ergänzend zu Strava/WHOOP (Wunsch 2026-11-19, noch nicht gebaut):
+  - Trainings als Workout (Krafttraining, Start, Ende) in Apple Health schreiben; Daten bleiben auf dem Gerät, kein OAuth/Server nötig.
+  - HealthKit ist nur für native Apps zugänglich, nicht für die PWA. Weg (2026-11-24): als Teil der nativen App, s. u.
+    Alternative ohne App bliebe ein Kurzbefehl (`shortcuts://run-shortcut?name=…&input=text&text=…`), ungeprüft.
+  - Zu klären: ob Strava bzw. WHOOP Trainings ohnehin nach Apple Health weiterreichen (dann reicht evtl. ein Weg).
+- **Import-Lücke schließen** (gefunden 2026-11-24, noch nicht gebaut; Voraussetzung für den Umzug in die native App):
+  - `exportJSON` schreibt alles außer `active`, `importJSON` (`js/store.js`) übernimmt nur `plans`, `history`, `equip`.
+    Es fehlen `tempo`, `drafts`, `autopilot`, `setup`, `stretch*`, `sound`, `design`, `theme` und die Filter. Betrifft auch die PWA.
+  - Lösung: alle bekannten Felder mit passendem Typ übernehmen, fehlende (ältere Exporte) unverändert lassen; Design/Hell-Dunkel danach
+    sofort anwenden; Rückfrage vor dem Import nennt auch die Einstellungen.
+- **Native App für iPhone, danach Android** (Wunsch 2026-11-19, Konzept vom Besitzer bestätigt 2026-11-24, noch nicht gebaut):
+  - **Prinzip:** Capacitor-Hülle, kein Neuschreiben in Swift/Kotlin. Eine Codebasis für Web, iOS und Android, gemeinsam weiterentwickelt.
+    Die Web-App auf GitHub Pages bleibt (Teilen im privaten Umfeld) und verhält sich gleich. Entwicklung auf Branch `ios-app`.
+  - **Getrennt bleiben:** Veröffentlichung (Web: `git push`; Apps: `www/` befüllen, `npx cap sync`, Build, Upload) und Daten
+    (kein Abgleich zwischen Web und App; pro Person dauerhaft nur eine Variante, Import ersetzt den Stand).
+  - **Aufbau:** Plattformunterschiede gebündelt in `js/platform.js`, nach Funktionen (speichern, teilen, Pausenende melden, wach halten,
+    Workout schreiben), keine verstreuten „ist iOS?“-Abfragen. Neue Datei auch in `sw.js` → `SHELL`.
+    `www/` (Skript kopiert `index.html`, `app.css`, `js/`, `fonts/`, `icons/`) und `node_modules/` in `.gitignore`.
+    Zu prüfen: Capacitor-Plugins ohne Bundler einbinden, damit die Web-App ohne Build bleibt.
+  - **Schritte iOS** (Aufwand geschätzt):
+    1. Mac einrichten (½ Tag): Xcode ≥ 26, Node ≥ 22 (beides fehlt am 2026-11-24). CocoaPods nicht nötig (Capacitor 8 nutzt SPM).
+    2. Hülle anlegen (½ Tag): `@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`; `npx cap init … --web-dir www`, `npx cap add ios`; auf dem iPhone starten.
+    3. Code anpassen (1–2 Tage), für zuverlässigen Betrieb nötig, nicht für den ersten Start:
+       Daten in native Datei statt `localStorage` (iOS kann es bei Platzmangel löschen), vor dem Start laden, Web unverändert ·
+       Import-Lücke (s. o.) · Service Worker und „Nach Update suchen“ in der App abschalten (die Prüfung auf `localhost` in `js/app.js`
+       trifft auch in Capacitor zu) · lokale Mitteilung zum Pausenende (bei gesperrtem Display kein Ton), bei Pause/Überspringen löschen ·
+       Export per Teilen testen, sonst Share-Plugin. Auf dem Gerät prüfen: Ton (stumm, neben Musik), Wachhalten, Safe Areas, Tastatur, Zurück-Wischen.
+    4. Apple Health (1–2 Tage): eigenes kleines Swift-Plugin mit `HKWorkoutBuilder`; `@capgo/capacitor-health` 8.13.0 kann Workouts
+       laut README nur lesen. HealthKit-Capability, Berechtigungstext, Schalter in den Einstellungen (Standard: aus). Einzelne Sätze bleiben in der App.
+    5. Daten umziehen: PWA exportieren, in der App importieren, vergleichen, **erst danach** die PWA löschen (kein Zugriff auf ihren Speicher).
+    6. TestFlight (½ Tag): interne Tester ohne Review, Builds laufen nach 90 Tagen ab. Icon 1024 px ohne Transparenz.
+    7. App Store (optional, 1–2 Tage + Review): Datenschutzerklärung und -angaben (Gesundheitsdaten, besonders Zyklusphase), Privacy Manifest,
+       Support-URL, Screenshots; Richtlinie 4.2 (keine reine Website-Hülle); Schriftlizenz (DESIGN.md §11) klären.
+  - **Android nach iOS** (2–4 Tage; Angaben nicht neu recherchiert, vor dem Start prüfen): `@capacitor/android`, `npx cap add android`, Android Studio, Testgerät.
+    Share-Plugin Pflicht (`navigator.share` und Blob-Download gehen in der WebView nicht); Zurück-Taste/-Geste (Sheets schließen, Training nicht
+    versehentlich beenden); Mitteilungs-Berechtigung und exakte Alarme; Health Connect über eigenes Kotlin-Plugin; prüfen: Wachhalten, Ton, Ränder, ältere WebViews.
+    Google Play: interner Test bis 100 Personen; öffentlich bei neuen Privatkonten vorher geschlossener Test (12 Personen, 14 Tage) und Health-Erklärung.
+  - **Schon bei iOS beachten:** App-ID auf beiden Plattformen gültig (nur Kleinbuchstaben, Ziffern, Punkte, keine Bindestriche; nach dem ersten
+    Upload fest); Capacitor-Plugins wählen, die beide Plattformen abdecken; Health-Plugin mit gleichem JavaScript-Aufruf (darunter Swift bzw. Kotlin).
+  - **Kosten:** Apple Developer 99 USD/Jahr (ab TestFlight), Google Play 25 USD einmalig.
+  - **Offen:** Reicht TestFlight oder App Store (Vorschlag: mit TestFlight anfangen)? Apple-Konto auf Besitzer oder Besitzerin der Marke
+    (Name erscheint im Store als Anbieter)? App-ID?
+  - **Nächster Schritt:** Machbarkeitstest (ca. 1–2 Tage): Schritte 1 und 2 plus ein Test-Workout in Apple Health.
