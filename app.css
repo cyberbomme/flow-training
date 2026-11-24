@@ -160,6 +160,7 @@ svg .fill { fill: currentColor; stroke: none; }
 .fig-head { fill: var(--fig-bg, var(--color-surface)); }
 .fig-ghost { stroke: var(--fig-ghost); stroke-width: 3.2; vector-effect: none; }
 .fig-ground { stroke: var(--color-line); stroke-width: 1.5; }
+.fig-cam { fill: var(--color-text-muted); stroke: none; font: 500 5px var(--font-body, sans-serif); text-anchor: middle; }
 .equip { stroke: var(--fig-equip); stroke-width: 2.4; fill: none; }
 .equip rect { fill: var(--fig-equip); stroke: none; }
 .prop circle { fill: var(--fig-prop); stroke: var(--fig-bg, var(--color-surface)); stroke-width: 1.2; }

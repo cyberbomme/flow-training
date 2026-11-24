@@ -105,11 +105,50 @@ const poly = (...ps) => 'M' + ps.map(pt).join('L');
 
 function bodySVG(J, ghost) {
   const far = poly(J.f2, J.a2, J.k2, J.hp) + poly(J.n, J.e2, J.w2);
-  const near = poly(J.f, J.a, J.k, J.hp, J.n) + poly(J.n, J.e, J.w) + line(J.n, J.h);
+  const near = poly(J.f, J.a, J.k, J.hp, J.n) + line(J.n, J.h);
   const cls = ghost ? 'fig-ghost' : 'fig-body';
+  // Der nahe Arm liegt vor dem Kopf
   return `<g class="${cls}"><path class="fig-far" d="${far}"/><path d="${near}"/>` +
-    `<circle class="fig-head" cx="${f1(J.h[0])}" cy="${f1(J.h[1])}" r="${L.head}"/></g>`;
+    `<circle class="fig-head" cx="${f1(J.h[0])}" cy="${f1(J.h[1])}" r="${L.head}"/><path d="${poly(J.n, J.e, J.w)}"/></g>`;
 }
+
+// ── Ansichten „von vorn“ und „von oben“ (ex.cam: 'front' | 'top') ──
+// Posen als Punkte mit Schulter- und Hüftbreite, L/R = links/rechts im Bild: h, sL/sR Schultern, pL/pR Hüfte,
+// eL/eR Ellbogen, wL/wR Hände, kL/kR Knie, aL/aR Füße. nose = Blickrichtung (°, 0 = oben). Glieder dürfen perspektivisch kürzer sein.
+const WIDE_PARENT = { eL: 'sL', eR: 'sR', wL: 'eL', wR: 'eR' };
+const WIDE_KEYS = ['h', 'sL', 'sR', 'pL', 'pR', 'kL', 'kR', 'aL', 'aR', 'eL', 'eR', 'wL', 'wR'];
+function wideBetween(A, B, t) {
+  if (t <= 0) return A;
+  if (t >= 1) return B;
+  const o = {};
+  for (const k of WIDE_KEYS) {
+    if (!A[k] || !B[k]) continue;
+    const pa = WIDE_PARENT[k];
+    if (!pa || A.lin) { o[k] = lerpPt(A[k], B[k], t); continue; } // lin: Bewegung auf den Betrachter zu
+    const va = sub(A[k], A[pa]), vb = sub(B[k], B[pa]), ga = angOf([0, 0], va);
+    o[k] = add(o[pa], dir(lerpAng(ga, angOf([0, 0], vb), t), lerp(Math.hypot(...va), Math.hypot(...vb), t)));
+  }
+  if (A.nose != null) o.nose = lerp(A.nose, B.nose, t);
+  return o;
+}
+function wideSVG(ex, J, ghost) {
+  const mid = (p, q) => lerpPt(p, q, 0.5), path = (...a) => (a.every(Boolean) ? poly(...a) : '');
+  const ns = mid(J.sL, J.sR), bent = ex.cam === 'front' && J.h[1] > J.sL[1]; // vorgebeugt: Kopf vor den Schultern
+  const foot = (a, x) => (ex.cam === 'front' && a ? line(a, [a[0] + x, a[1] + 1]) : '');
+  const hips = path(J.pL, J.pR), legs = path(J.pL, J.kL, J.aL) + path(J.pR, J.kR, J.aR) + foot(J.aL, -3.5) + foot(J.aR, 3.5);
+  const standTop = ex.cam === 'top' && !J.kL; // stehend von oben: Hüfte blass unter den Schultern
+  const far = standTop ? hips : bent ? hips + legs : '';
+  const near = (far ? '' : hips + legs + line(ns, mid(J.pL, J.pR))) + path(J.sL, J.sR) + (standTop || bent ? '' : line(ns, J.h));
+  const nose = J.nose == null ? '' : line(add(J.h, dir(J.nose, L.head)), add(J.h, dir(J.nose, L.head + 3.5)));
+  return `<g class="${ghost ? 'fig-ghost' : 'fig-body'}"><path class="fig-far" d="${far}"/><path d="${near}${nose}"/>` +
+    `<circle class="fig-head" cx="${f1(J.h[0])}" cy="${f1(J.h[1])}" r="${L.head}"/><path d="${path(J.sL, J.eL, J.wL)}${path(J.sR, J.eR, J.wR)}"/></g>`;
+}
+function wideProps(props, J, ghost) {
+  return props.filter((pr) => pr.t === 'db').map((pr) => (pr.mid ? [lerpPt(J.wL, J.wR, 0.5)] : [J.wL, J.wR]).map((p) =>
+    `<g class="prop${ghost ? ' prop-ghost' : ''}"><circle cx="${f1(p[0])}" cy="${f1(p[1])}" r="4.2"/></g>`).join('')).join('');
+}
+const drawn = (ex, J, ghost) => (ex.cam ? wideSVG(ex, J, ghost) + wideProps(ex.props || [], J, ghost) : propsSVG(ex.props || [], J, ghost) + bodySVG(J, ghost));
+export const CAM_LABEL = { front: 'Von vorn', top: 'Von oben' };
 
 function propsSVG(props, J, ghost) {
   let s = '';
@@ -156,7 +195,7 @@ function staticSVG(props) {
 // Quadratischer Ausschnitt um den Inhalt (für runde Thumbnails)
 function fitView(ex) {
   const xs = [], ys = [];
-  for (const J of posesOf(ex)) for (const k in J) { xs.push(J[k][0]); ys.push(J[k][1]); }
+  for (const J of posesOf(ex)) for (const k in J) if (Array.isArray(J[k])) { xs.push(J[k][0]); ys.push(J[k][1]); }
   const hs = posesOf(ex).map((J) => J.h);
   hs.forEach((h) => { xs.push(h[0] - L.head, h[0] + L.head); ys.push(h[1] - L.head, h[1] + L.head); });
   for (const pr of ex.props || []) {
@@ -164,7 +203,7 @@ function fitView(ex) {
     if (pr.t === 'bar') { ys.push(pr.y); }
     if (pr.t === 'band' && typeof pr.from !== 'string') { xs.push(pr.from[0]); ys.push(pr.from[1]); }
   }
-  if (!ex.noGround) ys.push(GROUND);
+  if (!ex.noGround && ex.cam !== 'top') ys.push(GROUND);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const s = Math.max(x1 - x0, y1 - y0) * 1.3 + 8;
   return `${f1((x0 + x1) / 2 - s / 2)} ${f1((y0 + y1) / 2 - s / 2)} ${f1(s)} ${f1(s)}`;
@@ -172,23 +211,21 @@ function fitView(ex) {
 
 function frame(ex, inner, fit) {
   const view = fit ? fitView(ex) : ex.view || '0 0 100 100';
-  const ground = ex.noGround ? '' : `<path class="fig-ground" d="M2,${GROUND + 1.5}H98"/>`;
-  return `<svg class="fig" viewBox="${view}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ground}${staticSVG(ex.props || [])}${inner}</svg>`;
+  const ground = ex.noGround || ex.cam === 'top' ? '' : `<path class="fig-ground" d="M2,${GROUND + 1.5}H98"/>`;
+  return `<svg class="fig" viewBox="${view}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ground}${staticSVG(ex.props || [])}${inner}${!fit && ex.cam ? `<text class="fig-cam" x="50" y="99">${CAM_LABEL[ex.cam]}</text>` : ''}</svg>`;
 }
 
 const cache = new Map();
 function posesOf(ex) {
-  if (!cache.has(ex.id)) cache.set(ex.id, ex.poses.map(solve));
+  if (!cache.has(ex.id)) cache.set(ex.id, ex.cam ? ex.poses : ex.poses.map(solve));
   return cache.get(ex.id);
 }
 
 // Statische Darstellung: Startpose blass, Hauptpose kräftig (ex.key, sonst die zweite Pose)
 export function figureStatic(ex, fit = false) {
   const P = posesOf(ex);
-  const props = ex.props || [];
-  if (P.length === 1) return frame(ex, propsSVG(props, P[0]) + bodySVG(P[0]), fit);
-  const K = P[ex.key ?? 1];
-  return frame(ex, propsSVG(props, P[0], true) + bodySVG(P[0], true) + propsSVG(props, K) + bodySVG(K), fit);
+  if (P.length === 1) return frame(ex, drawn(ex, P[0]), fit);
+  return frame(ex, drawn(ex, P[0], true) + drawn(ex, P[ex.key ?? 1]), fit);
 }
 
 // Ablauf einer Wiederholung: ex.seq = Reihenfolge der Posen (Standard: alle der Reihe nach), danach zurück zur ersten.
@@ -200,10 +237,12 @@ function timeline(ex) {
   if (timelines.has(ex.id)) return timelines.get(ex.id);
   const seq = ex.seq || ex.poses.map((_, i) => i), n = seq.length;
   const stops = seq.map((_, i) => i).filter((i) => i === 0 || !ex.poses[seq[i]].via);
-  const hold = HOLD_SUM / stops.length, perSeg = (1 - HOLD_SUM) / n;
+  // ex.dur = Gewicht je Abschnitt (Standard: alle gleich lang)
+  const w = seq.map((_, i) => ex.dur?.[i] ?? 1), sum = w.reduce((a, b) => a + b, 0);
+  const hold = HOLD_SUM / stops.length, unit = (1 - HOLD_SUM) / sum;
   let at = 0;
   const legs = stops.map((from, k) => {
-    const to = k + 1 < stops.length ? stops[k + 1] : n, o = { from, segs: to - from, t0: at, t1: at + hold, t2: at + hold + (to - from) * perSeg };
+    const to = k + 1 < stops.length ? stops[k + 1] : n, part = w.slice(from, to), len = part.reduce((a, b) => a + b, 0), o = { from, segs: to - from, part, len, t1: at + hold, t2: at + hold + len * unit };
     at = o.t2;
     return o;
   });
@@ -232,15 +271,18 @@ export function figureAt(ex, ph) {
   const P = posesOf(ex);
   let J = P[0];
   if (P.length > 1) {
-    const rep = Math.floor(ph + 1e-9), x = Math.max(0, ph - rep), { seq, n, legs } = timeline(ex);
+    const rep = Math.floor(ph + 1e-9), { seq, n, legs } = timeline(ex);
+    let x = Math.max(0, ph - rep);
+    if (ex.rev && rep % 2 === 1) x = 1 - x; // jede zweite Wiederholung rückwärts
     const L = legs.find((l) => x < l.t2) || legs[legs.length - 1];
-    const u = x <= L.t1 ? 0 : ease(Math.min(1, (x - L.t1) / (L.t2 - L.t1))) * L.segs;
-    const k = Math.min(L.segs - 1, Math.floor(u)), i = L.from + k, m = !!ex.alt && rep % 2 === 1;
+    let u = x <= L.t1 ? 0 : ease(Math.min(1, (x - L.t1) / (L.t2 - L.t1))) * L.len, k = 0;
+    while (k < L.segs - 1 && u >= L.part[k]) u -= L.part[k++];
+    const v = k + Math.min(1, u / L.part[k]), i = L.from + k, m = !!ex.alt && rep % 2 === 1;
     const [pA, A] = poseOf(ex, seq[i], m);
     const [pB, B] = i + 1 < n ? poseOf(ex, seq[i + 1], m) : poseOf(ex, seq[0], ex.alt ? !m : false);
-    J = inbetween(ex, pA, pB, A, B, u - k);
+    J = ex.cam ? wideBetween(A, B, v - k) : inbetween(ex, pA, pB, A, B, v - k);
   }
-  return propsSVG(ex.props || [], J) + bodySVG(J);
+  return drawn(ex, J);
 }
 
 // Animiert die Posenfolge; liefert Stop-Funktion. Ein Zyklus = eine Wiederholung, passend zum Tempo der Übung.

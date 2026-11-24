@@ -17,8 +17,6 @@
   .card p, .card ul { margin: 0; font-size: 14px; line-height: 1.45; }
   .card ul { padding-left: 18px; color: var(--color-text-muted); }
   .card .badges { margin: 0; }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .pair small { color: var(--color-text-muted); }
 </style>
 </head>
 <body>
@@ -29,37 +27,36 @@
 <script type="module">
 import { EXERCISES, byId, TEMPO, isStretch } from '../js/exercises.js';
 import { animateFigure } from '../js/figure.js';
-import { DRAFTS, draftAt, draftSVG } from './entwurf-ansichten.js';
 
 const A = 'dead-bug crawling bulgarian-split-squat schulterdruecken-kniend ausfallschritt clock-lunges seitlicher-ausfallschritt diagonal-ausfallschritt-band goblet-reverse-lunge trx-curtsy jump-lunge seitsprints klimmzug bank-dips crunch kb-swing seit-frontheben curl-arnold curl-trizeps beincurl-kh figur-vier waden-stufe schulter-dehnung hamstring-liegend'.split(' ');
-const B = 'walkout kang-squat kreuzheben-push-press rdl-rudern burpee-kh push-plank snatch-einarmig snatch-beidarmig'.split(' ');
+const B = 'walkout kang-squat kreuzheben-push-press rdl-rudern burpee-kh burpee push-plank snatch-einarmig snatch-beidarmig'.split(' ');
+const C = 'flys einbein-rotation beinheben-seitlich rotation-liegend brust-dehnung-wand reverse-flys rudern-breit schmetterling'.split(' ');
+const R2 = 'crawling seitlicher-ausfallschritt jump-lunge seitsprints seit-frontheben curl-trizeps figur-vier schulter-dehnung walkout kang-squat kreuzheben-push-press burpee reverse-flys'.split(' ');
 const TABS = [
+  { id: 'r', name: `Runde 2 (${R2.length})`, list: R2, intro: 'Nach deinem Review geändert: A2, A7, A11, A12, A17, A19, A21, A23, B1, B2, B3, Burpee (neu), C6.' },
   { id: 'a', name: `A: korrigiert (${A.length})`, list: A, intro: 'Figuren, die dem Text widersprochen haben.' },
   { id: 'b', name: `B: Phasen ergänzt (${B.length})`, list: B, intro: 'Abläufe, bei denen Phasen gefehlt haben.' },
-  { id: 'c', name: `C: Entwürfe (${DRAFTS.length})`, intro: 'Neue Ansichten „von oben“ und „von vorn“. Noch nicht in der App: links heute, rechts der Entwurf.' },
+  { id: 'c', name: `C: von oben / von vorn (${C.length})`, list: C, intro: 'Neue Ansichten für Bewegungen, die von der Seite kaum zu erkennen sind.' },
   { id: 's', name: 'Dehntexte (24)', list: EXERCISES.filter(isStretch).map((e) => e.id), intro: 'Neu formulierte Texte der Dehnübungen.' },
-  { id: 'k', name: 'Alle Kraftübungen', list: EXERCISES.filter((e) => !isStretch(e)).map((e) => e.id), intro: 'Alle 93 Kraftübungen mit neuem Text.' },
+  { id: 'k', name: 'Alle Kraftübungen', list: EXERCISES.filter((e) => !isStretch(e)).map((e) => e.id), intro: 'Alle 94 Kraftübungen mit neuem Text.' },
 ];
 const $ = (id) => document.getElementById(id);
 const period = (e) => (isStretch(e) && !e.dynamic ? 6 : TEMPO[e.id] ?? 3);
-let stops = [], raf = 0;
+let stops = [];
 
 function draw(id) {
-  stops.forEach((f) => f()); stops = []; cancelAnimationFrame(raf);
-  const tab = TABS.find((t) => t.id === id) || TABS[0], ids = tab.list || DRAFTS.map((d) => d.id);
+  stops.forEach((f) => f()); stops = [];
+  const tab = TABS.find((t) => t.id === id) || TABS[0], ids = tab.list;
   $('intro').textContent = tab.intro;
   $('ctrl').innerHTML = TABS.map((t) => `<button class="chip ${t === tab ? 'on' : ''}" data-tab="${t.id}">${t.name}</button>`).join('');
   $('out').innerHTML = ids.map((i, n) => {
-    const e = byId[i], d = tab.list ? null : DRAFTS[n], rose = isStretch(e) ? 'rose' : '';
+    const e = byId[i], rose = isStretch(e) ? 'rose' : '';
     const fig = `<div class="fig-hero ${rose}" data-id="${i}"></div>`;
-    return `<div class="card">${d ? `<div class="pair"><div>${fig}<small>Heute</small></div><div><div class="fig-hero ${rose}" data-draft="${n}"></div><small>Entwurf · ${d.cam}</small></div></div>` : fig}
+    return `<div class="card">${fig}
       <b>${n + 1}. ${e.name}</b><div class="badges">${e.side ? '<span class="badge">Je Seite</span>' : ''}<span class="badge">${String(period(e)).replace('.', ',')} s</span></div>
       <p>${e.how}</p>${e.cues?.length ? `<ul>${e.cues.map((c) => `<li>${c}</li>`).join('')}</ul>` : ''}</div>`;
   }).join('');
   for (const el of $('out').querySelectorAll('[data-id]')) stops.push(animateFigure(el, byId[el.dataset.id], { period: period(byId[el.dataset.id]) }));
-  const ds = [...$('out').querySelectorAll('[data-draft]')];
-  const tick = (now) => { ds.forEach((el) => { const d = DRAFTS[+el.dataset.draft]; el.innerHTML = draftSVG(d, draftAt(d, now / 1000 / (d.seq.length > 2 ? 5 : 4))); }); raf = requestAnimationFrame(tick); };
-  if (ds.length) raf = requestAnimationFrame(tick);
 }
 $('ctrl').addEventListener('click', (ev) => { const t = ev.target.dataset.tab; if (t) { location.hash = t; draw(t); } });
 draw(location.hash.slice(1));

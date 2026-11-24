@@ -43,7 +43,9 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   Fehlende Gelenkwinkel in einer Pose = Glied hängt senkrecht (Vorgabe in `figure.js`). Zwischenposen über Gelenkwinkel, nicht Punkte (`inbetween`),
   damit Glieder ihre Länge behalten; `front: true` = Frontalansicht (Arme zur Seite, kürzester Weg).
   Mehr als zwei Posen: `seq` = Reihenfolge je Wiederholung (danach zurück zur ersten), `via: true` = ohne Halt durchlaufen, `key` = Pose fürs Standbild,
-  `alt: true` = jede zweite Wiederholung mit der anderen Seite, `flat: true` = Bewegung auf den Betrachter zu (Glied darf kürzer wirken), `fd` = Fußrichtung.
+  `alt: true` = jede zweite Wiederholung mit der anderen Seite, `flat: true` = Bewegung auf den Betrachter zu (Glied darf kürzer wirken), `fd` = Fußrichtung,
+  `dur` = Gewicht je Abschnitt, `rev: true` = jede zweite Wiederholung rückwärts. Ansichten `cam: 'front' | 'top'` (Bewegungen zur Seite): Posen als Punkte
+  mit Schulter- und Hüftbreite (`wideSVG`), Hinweis „Von vorn/Von oben“ im Bild. Bewegungen zur Seite nie in die Seitenansicht zwingen.
   Dehnungen bleiben bei zwei Posen (Training hält bei Phase 0,5). Prüfseite: `docs/figuren-review.html` (nicht im Offline-Cache).
 - Plan-Icons automatisch (`js/planicon.js`): erst Stichwort im Titel (Zyklusphasen, HIIT, Mobilität, Regeneration, Klettern,
   Core, Beine, Oberkörper, Ganzkörper, Kraft), sonst aus Muskelgruppen/Zeitanteil der Übungen.

@@ -15,6 +15,25 @@ export const EQUIPMENT = [
 const STAND = { hp: [50, 50], tr: 0, th: 180, sh: 180, ua: 180, fa: 180 };
 const PUSH_UP = { hp: [50.7, 74.1], tr: 67, a: [14, 90], w: [76, 90] };
 const OVERHEAD = '0 -8 100 100';
+// Bausteine für Ansichten „von vorn“ / „von oben“ (siehe figure.js)
+const F_LEGS = { pL: [46, 50], pR: [54, 50], kL: [45.5, 70], kR: [54.5, 70], aL: [45, 90], aR: [55, 90] };
+const F_STAND = { h: [50, 12], sL: [42, 23], sR: [58, 23], ...F_LEGS };
+const F_DOWN = { eL: [41, 37], wL: [40.5, 50], eR: [59, 37], wR: [59.5, 50] };
+const F_BENT = { h: [50, 50], sL: [41, 46], sR: [59, 46] };
+const F_HANG = { eL: [40, 60], wL: [41, 73], eR: [60, 60], wR: [59, 73] };
+const T_LIE = { h: [50, 15], sL: [42, 28], sR: [58, 28], pL: [45, 54], pR: [55, 54] };
+const T_ARMS = { eL: [29, 28], wL: [17, 28], eR: [71, 28], wR: [83, 28] };
+const rotPt = (p, c, deg) => { const r = (deg * Math.PI) / 180, x = p[0] - c[0], y = p[1] - c[1]; return [c[0] + x * Math.cos(r) - y * Math.sin(r), c[1] + x * Math.sin(r) + y * Math.cos(r)]; };
+const turned = (P, keys, c, deg) => ({ ...P, ...Object.fromEntries(keys.map((k) => [k, rotPt(P[k], c, deg)])) });
+const T_ROT = { h: [50, 52], sL: [38, 52], sR: [62, 52], pL: [43, 52], pR: [57, 52], eL: [43, 39], wL: [49, 27], eR: [57, 39], wR: [51, 27], nose: 0 };
+const rotTop = (deg) => ({ ...turned(T_ROT, ['sL', 'sR', 'eL', 'eR', 'wL', 'wR'], [50, 52], deg), nose: deg });
+const T_LEGUP = { ...T_LIE, ...T_ARMS, kL: [47, 60], kR: [53, 60], aL: [48, 64], aR: [52, 64] };
+const T_KNEES = { ...T_LIE, ...T_ARMS, kL: [47, 65], kR: [53, 65], aL: [47, 76], aR: [53, 76], nose: 180 };
+const T_WALL = { h: [50, 54], sL: [39, 54], sR: [61, 54], pL: [44, 54], pR: [56, 54], eL: [27, 52], wL: [27, 39], eR: [63, 60], wR: [61, 66], nose: 0 };
+const T_WALL2 = { ...turned({ ...T_WALL, h: [51, 50], sL: [40, 50], sR: [62, 50], pL: [45, 50], pR: [57, 50], eR: [64, 56], wR: [62, 62] }, ['sL', 'sR', 'pL', 'pR', 'eR', 'wR'], [51, 50], 38), nose: 38 };
+// Side Shuffle von vorn: c = Körpermitte, l/r = Füße, yl/yr = Höhe der Füße
+const shuffle = (c, l, r, yl = 90, yr = 90, via = true) => ({ via, h: [c, 25], sL: [c - 8, 36], sR: [c + 8, 36], pL: [c - 4, 62], pR: [c + 4, 62],
+  kL: [(l + c - 4) / 2 - 5, (yl + 62) / 2], kR: [(r + c + 4) / 2 + 5, (yr + 62) / 2], aL: [l, yl], aR: [r, yr], eL: [c - 14, 47], wL: [c - 5, 42], eR: [c + 14, 47], wR: [c + 5, 42] });
 
 // how = „So geht’s“: vollständiger Ablauf (Ausgangsposition, Bewegung, Rückweg, Zählweise/Seitenwechsel).
 // cues = „Worauf ich achte“: nur Stil, Technik, Varianten – optional, ohne Inhalt fällt der Bereich weg.
@@ -285,9 +304,10 @@ export const EXERCISES = [
     id: 'crawling', name: 'Bärengang (Crawling)', equip: [], muscles: 'Rumpf · Schultern · Oberschenkel', mode: 'reps',
     how: 'Vierfüßlerstand, Hände unter den Schultern, Knie unter der Hüfte, Knie eine Handbreit vom Boden abheben. Gegengleich eine Hand und den anderen Fuß ein kleines Stück nach vorn setzen, dann die andere Seite. Jeder Schritt zählt als Wiederholung.',
     cues: ['Rücken flach, Hüfte ruhig.', 'Langsam ist schwerer als schnell.'],
+    key: 0, alt: true,
     poses: [
-      { hp: [42, 64], tr: 86, a: [41, 90], a2: [34, 90], w: [70, 90], w2: [76, 90] },
-      { hp: [48, 64], tr: 86, a: [41, 90], a2: [48, 90], w: [82, 90], w2: [76, 90] },
+      { hp: [45, 64], tr: 86, a: [41, 90], a2: [33, 90], w: [69, 90], w2: [79, 90] },
+      { via: true, hp: [45, 63.5], tr: 86, a: [37, 90], a2: [37, 85], w: [74, 84], w2: [74, 90] },
     ],
   },
   {
@@ -300,15 +320,21 @@ export const EXERCISES = [
     ],
   },
   {
-    id: 'seitsprints', front: true, name: 'Seitliche Sprints (Side Shuffle)', equip: [], muscles: 'Oberschenkel · Gesäß · Ausdauer', mode: 'time',
+    id: 'seitsprints', name: 'Seitliche Sprints (Side Shuffle)', equip: [], muscles: 'Oberschenkel · Gesäß · Ausdauer', mode: 'time',
     how: 'Breite, tiefe Grundstellung, Knie gebeugt. Mit schnellen, kurzen Schritten seitlich laufen und nach ein paar Schritten die Richtung wechseln.',
     cues: ['Füße nicht überkreuzen.', 'Tief bleiben, nicht aufrichten.'],
-    seq: [0, 1, 2, 3, 2, 1], key: 3,
+    cam: 'front', seq: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1], key: 4,
     poses: [
-      { hp: [42, 62], tr: 0, a: [27, 90], a2: [57, 90], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
-      { via: true, hp: [47, 61], tr: 0, a: [27, 90], a2: [66, 86], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
-      { via: true, hp: [53, 61], tr: 0, a: [36, 86], a2: [71, 90], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
-      { hp: [56, 62], tr: 0, a: [41, 90], a2: [71, 90], ab: 1, ua: 165, fa: 60, ua2: 195, fa2: 300 },
+      shuffle(32, 18, 46, 90, 90, false),
+      shuffle(38, 18, 58, 90, 85),
+      shuffle(42, 30, 58, 85, 90),
+      shuffle(44, 30, 58),
+      shuffle(50, 30, 70, 90, 85),
+      shuffle(54, 42, 70, 85, 90),
+      shuffle(56, 42, 70),
+      shuffle(62, 42, 82, 90, 85),
+      shuffle(66, 54, 82, 85, 90),
+      shuffle(68, 54, 82, 90, 90, false),
     ],
   },
   {
@@ -334,7 +360,7 @@ export const EXERCISES = [
     id: 'walkout', name: 'Walkout', equip: [], muscles: 'Rumpf · Schultern · hintere Oberschenkel', mode: 'reps',
     how: 'Aus dem Stand mit möglichst gestreckten Beinen nach vorn beugen und die Hände vor den Füßen aufsetzen. Mit den Händen nach vorn laufen, bis du im hohen Liegestütz bist. Kurz halten, mit den Händen zurücklaufen und aufrichten.',
     cues: ['Im Stütz Körper gerade, Hüfte nicht durchhängen lassen.', 'Knie dürfen beim Aufsetzen leicht gebeugt sein.'],
-    seq: [0, 1, 2, 3, 2, 1], key: 3,
+    seq: [0, 1, 2, 3, 2, 1], key: 3, dur: [2.2, 1, 1, 1, 1, 2.2],
     poses: [
       { hp: [18, 50], tr: 0, a: [18, 90] },
       { hp: [16, 51], tr: 130, a: [18, 90], w: [44, 90] },
@@ -368,11 +394,13 @@ export const EXERCISES = [
     id: 'jump-lunge', name: 'Ausfallschrittsprung (Jump Lunge)', equip: [], muscles: 'Oberschenkel · Gesäß · Ausdauer', mode: 'reps',
     how: 'Ausfallschritt, beide Knie gebeugt. Hochspringen, in der Luft die Beine wechseln und im Ausfallschritt mit dem anderen Bein vorn landen. Jede Landung ist eine Wiederholung.',
     cues: ['Weich landen, hinteres Knie knapp über dem Boden.', 'Oberkörper aufrecht.'],
-    key: 1, alt: true,
+    view: '-4 -14 108 108', key: 2, alt: true, dur: [1.3, 1, 0.8, 1, 1.3],
     poses: [
       { hp: [46, 70], tr: 0, a: [62, 90], a2: [30, 90], ua: 200, fa: 140, ua2: 150, fa2: 60 },
-      { via: true, hp: [46, 47], tr: 0, a: [52, 83], a2: [40, 83], ua: 190, fa: 120, ua2: 160, fa2: 80 },
-      { via: true, hp: [46, 47], tr: 0, a: [40, 83], a2: [52, 83], ua: 160, fa: 80, ua2: 190, fa2: 120 },
+      { via: true, hp: [46, 50], tr: 2, a: [58, 88], a2: [34, 88], ua: 190, fa: 115, ua2: 140, fa2: 50 },
+      { via: true, hp: [46, 37], tr: 0, a: [54, 74], a2: [38, 74], ua: 150, fa: 70, ua2: 130, fa2: 45 },
+      { via: true, hp: [46, 37], tr: 0, a: [38, 74], a2: [54, 74], ua: 130, fa: 45, ua2: 150, fa2: 70 },
+      { via: true, hp: [46, 50], tr: 2, a: [34, 88], a2: [58, 88], ua: 140, fa: 50, ua2: 190, fa2: 115 },
     ],
   },
   {
@@ -394,14 +422,14 @@ export const EXERCISES = [
     ],
   },
   {
-    id: 'seitlicher-ausfallschritt', front: true, name: 'Seitlicher Ausfallschritt', equip: [], muscles: 'Oberschenkel · Gesäß · Adduktoren', mode: 'reps', side: true,
+    id: 'seitlicher-ausfallschritt', name: 'Seitlicher Ausfallschritt', equip: [], muscles: 'Oberschenkel · Gesäß · Adduktoren', mode: 'reps', side: true,
     how: 'Aus dem Stand einen breiten Schritt zur Seite machen. Hüfte nach hinten schieben und ins Knie des Schrittbeins sinken, das andere Bein bleibt gestreckt. Über das Schrittbein zurück in den Stand drücken. Erst alle Wiederholungen auf einer Seite.',
     cues: ['Beide Fersen bleiben am Boden.', 'Knie zeigt in Richtung Zehen.'],
-    seq: [0, 1, 2, 1], key: 2,
+    cam: 'front', seq: [0, 1, 2, 1], key: 2,
     poses: [
-      { hp: [65, 50], tr: 0, a: [60, 90], a2: [70, 90], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
-      { via: true, hp: [57, 53], tr: 0, a: [44, 84], a2: [70, 90], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
-      { hp: [37.2, 67.2], tr: 355, a: [28, 90], a2: [70, 90], ab: 1, ua: 160, fa: 40, ua2: 200, fa2: 320 },
+      { h: [65, 12], sL: [57, 23], sR: [73, 23], pL: [61, 50], pR: [69, 50], kL: [60.5, 70], kR: [69.5, 70], aL: [60, 90], aR: [70, 90], eL: [55, 36], wL: [63, 30], eR: [75, 36], wR: [67, 30] },
+      { via: true, h: [57, 15], sL: [49, 26], sR: [65, 26], pL: [53, 53], pR: [61, 53], kL: [45, 67], kR: [65, 71], aL: [44, 84], aR: [70, 90], eL: [47, 39], wL: [55, 33], eR: [67, 39], wR: [59, 33] },
+      { h: [38, 34], sL: [29, 43], sR: [45, 43], pL: [32, 66], pR: [40, 66], kL: [23, 73], kR: [55, 78], aL: [24, 90], aR: [70, 90], eL: [27, 55], wL: [35, 50], eR: [48, 55], wR: [39, 50] },
     ],
   },
   {
@@ -572,7 +600,7 @@ export const EXERCISES = [
     how: 'Hanteln vor den Oberschenkeln. Hüfte nach hinten schieben und die Hanteln bis unter die Knie führen, aufrichten und die Hanteln auf die Schultern bringen. Leicht in die Knie federn und mit Schwung aus den Beinen über den Kopf drücken. Kontrolliert zurück auf die Schultern und vor die Oberschenkel.',
     cues: ['Rücken gerade beim Kreuzheben.', 'Oben Rumpf fest, kein Hohlkreuz.'],
     view: OVERHEAD, props: [{ t: 'db' }],
-    seq: [0, 1, 0, 2, 3, 4, 2], key: 4,
+    seq: [0, 1, 0, 2, 3, 4, 2], key: 4, dur: [1.4, 1.4, 1, 0.6, 0.6, 1, 1],
     poses: [
       { ...STAND, a: [50, 90] },
       { hp: [41, 52], tr: 80, a: [50, 90], ua: 208, fa: 208 },
@@ -591,6 +619,19 @@ export const EXERCISES = [
       STAND,
       { hp: [41, 52], tr: 78, a: [50, 90], ua: 206, fa: 206 },
       { hp: [41, 52], tr: 78, a: [50, 90], ua: 240, fa: 180 },
+    ],
+  },
+  {
+    id: 'burpee', name: 'Burpee', equip: [], muscles: 'Oberschenkel · Brust · Rumpf · Ausdauer', mode: 'reps',
+    how: 'Aufrecht stehen. In die Hocke gehen und die Hände vor den Füßen aufsetzen. Mit den Füßen in den Liegestütz springen, dann wieder nach vorn zu den Händen. Aufrichten und mit den Armen über dem Kopf nach oben springen. Weich landen und von vorn.',
+    cues: ['Im Stütz Körper gerade, Hüfte nicht durchhängen lassen.', 'Leichter: Füße einzeln zurücksetzen und ohne Sprung aufrichten.', 'Schwerer: unten ein Liegestütz.'],
+    view: '-4 -16 108 108', seq: [0, 1, 2, 3, 2, 1, 4], key: 4, dur: [1.3, 0.8, 0.8, 0.8, 0.8, 1.2, 1.3],
+    poses: [
+      { hp: [66, 50], tr: 0, a: [66, 90], ua: 180, fa: 180 },
+      { via: true, hp: [52, 70], tr: 70, a: [66, 90], w: [76, 90] },
+      { via: true, hp: [49, 64], tr: 80, a: [40, 84], w: [76, 90] },
+      { ...PUSH_UP },
+      { hp: [66, 41], tr: 0, a: [66, 80], ua: 10, fa: 5 },
     ],
   },
   {
@@ -637,10 +678,11 @@ export const EXERCISES = [
     id: 'einbein-rotation', name: 'Rumpfrotation auf einem Bein', equip: ['kh'], muscles: 'Rumpf · Gesäß · Schultern', mode: 'reps', side: true,
     how: 'Auf einem Bein stehen, Hantel mit beiden Händen und gestreckten Armen vor der Brust. Oberkörper und Arme langsam zu einer Seite drehen und zurück zur Mitte, dann zur anderen Seite. Erst alle Wiederholungen auf einem Bein, dann wechseln.',
     cues: ['Becken bleibt ruhig nach vorn gerichtet.', 'Gleichgewicht vor Tempo.'],
-    props: [{ t: 'db', both: false }],
+    cam: 'top', props: [{ t: 'db', mid: true }], seq: [0, 1, 0, 2],
     poses: [
-      { hp: [50, 50], tr: 0, th: 180, sh: 180, th2: 165, sh2: 210, ua: 85, fa: 85, ua2: 85, fa2: 85 },
-      { hp: [50, 50], tr: 0, th: 180, sh: 180, th2: 165, sh2: 210, ua: 130, fa: 140, ua2: 130, fa2: 140 },
+      T_ROT,
+      rotTop(48),
+      rotTop(-48),
     ],
   },
 
@@ -656,35 +698,34 @@ export const EXERCISES = [
     ],
   },
   {
-    id: 'seit-frontheben', front: true, name: 'Seitheben zum Frontheben', equip: ['kh'], muscles: 'Schultern', mode: 'reps',
+    id: 'seit-frontheben', name: 'Seitheben zum Frontheben', equip: ['kh'], muscles: 'Schultern', mode: 'reps',
     how: 'Aufrecht stehen, Hanteln neben dem Körper. Seitlich bis auf Schulterhöhe heben, oben vor dem Körper zusammenführen und nach vorn absenken. Die nächste Wiederholung umgekehrt: nach vorn heben, oben zur Seite öffnen, seitlich absenken.',
     cues: ['Leichtes Gewicht.', 'Arme leicht gebeugt, kein Schwung.'],
-    props: [{ t: 'db' }],
-    seq: [0, 1, 2], key: 1,
+    cam: 'front', props: [{ t: 'db' }], seq: [0, 1, 2], key: 1, rev: true,
     poses: [
-      { ...STAND, ua: 165, fa: 168, ua2: 195, fa2: 192 },
-      { flat: true, ...STAND, ua: 88, fa: 95, ua2: 272, fa2: 265 },
-      { ...STAND, ua: 90, fa: 88, ua2: 90, fa2: 88 },
+      { ...F_STAND, ...F_DOWN },
+      { lin: true, ...F_STAND, eL: [28.5, 25], wL: [16, 27], eR: [71.5, 25], wR: [84, 27] },
+      { lin: true, ...F_STAND, eL: [44, 25], wL: [46, 25], eR: [56, 25], wR: [54, 25] },
     ],
   },
   {
     id: 'reverse-flys', name: 'Reverse Flys vorgebeugt', equip: ['kh'], muscles: 'Hintere Schulter · Oberer Rücken', mode: 'reps',
     how: 'Knie leicht gebeugt, Oberkörper mit geradem Rücken weit vorbeugen, Arme hängen leicht gebeugt unter den Schultern. Hanteln seitlich nach außen heben, bis die Arme auf Schulterhöhe sind, und langsam senken.',
     cues: ['Schulterblätter zusammen.', 'Leichtes Gewicht, kein Schwung.'],
-    props: [{ t: 'db' }],
+    cam: 'front', props: [{ t: 'db' }],
     poses: [
-      { hp: [44, 52], tr: 72, a: [50, 90], ua: 182, fa: 175 },
-      { hp: [44, 52], tr: 72, a: [50, 90], ua: 265, fa: 250 },
+      { ...F_BENT, ...F_HANG, pL: [45, 52], pR: [55, 52], kL: [44, 71], kR: [56, 71], aL: [44, 90], aR: [56, 90] },
+      { ...F_BENT, eL: [28, 47], wL: [15, 48], eR: [72, 47], wR: [85, 48], pL: [45, 52], pR: [55, 52], kL: [44, 71], kR: [56, 71], aL: [44, 90], aR: [56, 90] },
     ],
   },
   {
     id: 'rudern-breit', name: 'Rudern im breiten Stand', equip: ['kh'], muscles: 'Oberer Rücken · Hintere Schulter · Bizeps', mode: 'reps',
     how: 'Breiter Stand, Knie gebeugt, Oberkörper weit vorgeneigt, Hanteln hängen unter den Schultern. Hanteln mit weit abgespreizten Ellbogen seitlich hochziehen und langsam ablassen.',
     cues: ['Schulterblätter zusammen.', 'Rücken gerade.'],
-    props: [{ t: 'db' }],
+    cam: 'front', props: [{ t: 'db' }],
     poses: [
-      { hp: [44, 55], tr: 65, a: [56, 90], a2: [36, 90], ua: 180, fa: 180 },
-      { hp: [44, 55], tr: 65, a: [56, 90], a2: [36, 90], ua: 275, fa: 185 },
+      { ...F_BENT, ...F_HANG, pL: [44, 55], pR: [56, 55], kL: [30, 71], kR: [70, 71], aL: [28, 90], aR: [72, 90] },
+      { ...F_BENT, eL: [27, 47], wL: [28, 60], eR: [73, 47], wR: [72, 60], pL: [44, 55], pR: [56, 55], kL: [30, 71], kR: [70, 71], aL: [28, 90], aR: [72, 90] },
     ],
   },
   {
@@ -731,10 +772,10 @@ export const EXERCISES = [
     id: 'flys', name: 'Fliegende (Flys)', equip: ['kh'], muscles: 'Brust', mode: 'reps',
     how: 'Rückenlage am Boden oder auf der Bank, Hanteln über der Brust, Ellbogen leicht gebeugt. Arme in einem weiten Bogen zur Seite öffnen und auf demselben Weg wieder über der Brust zusammenführen.',
     cues: ['Ellbogen-Winkel bleibt gleich.', 'Nur so weit öffnen, wie es sich angenehm anfühlt.'],
-    props: [{ t: 'db', both: false }],
+    cam: 'top', props: [{ t: 'db' }],
     poses: [
-      { hp: [56, 84], tr: 270, hd: 270, a: [74, 90], ua: 2, fa: 0 },
-      { hp: [56, 84], tr: 270, hd: 270, a: [74, 90], ua: 60, fa: 100 },
+      { ...T_LIE, eL: [41, 34], wL: [47, 28], eR: [59, 34], wR: [53, 28], kL: [45, 66], kR: [55, 66], aL: [45, 78], aR: [55, 78] },
+      { ...T_LIE, eL: [29, 31], wL: [17, 28], eR: [71, 31], wR: [83, 28], kL: [45, 66], kR: [55, 66], aL: [45, 78], aR: [55, 78] },
     ],
   },
   {
@@ -903,9 +944,11 @@ export const EXERCISES = [
     id: 'beinheben-seitlich', name: 'Beinheben seitlich (Scheibenwischer)', equip: [], muscles: 'Bauch · Seitliche Rumpfmuskulatur', mode: 'reps', side: true,
     how: 'Rückenlage, Arme seitlich am Boden, gestreckte Beine senkrecht anheben. Beine langsam zu einer Seite absenken, ohne den Boden zu berühren, zurück zur Mitte und zur anderen Seite.',
     cues: ['Schultern bleiben am Boden.', 'Leichter: Knie angewinkelt.'],
+    cam: 'top', seq: [0, 1, 0, 2],
     poses: [
-      { hp: [50, 85], tr: 270, hd: 270, th: 5, sh: 5, ua: 270, fa: 270 },
-      { hp: [50, 85], tr: 270, hd: 270, th: 55, sh: 55, ua: 270, fa: 270 },
+      T_LEGUP,
+      { ...T_LEGUP, pL: [46, 53], pR: [55, 55], kL: [65, 58], kR: [73, 61], aL: [84, 60], aR: [92, 63] },
+      { ...T_LEGUP, pL: [45, 55], pR: [54, 53], kL: [27, 61], kR: [35, 58], aL: [8, 63], aR: [16, 60] },
     ],
   },
   {
@@ -975,21 +1018,26 @@ export const EXERCISES = [
     poses: [{ ...STAND, hd: 345, ua: 28, fa: 200, w2: [56, 11] }],
   },
   {
-    id: 'brust-dehnung-wand', front: true, name: 'Brustdehnung an der Wand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Brust · Schultern · Bizeps', mode: 'time', side: true,
+    id: 'brust-dehnung-wand', name: 'Brustdehnung an der Wand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Brust · Schultern · Bizeps', mode: 'time', side: true,
     t: { brust: 1, schulter: 0.4, bizeps: 0.3 },
     how: 'Seitlich neben eine Wand oder einen Türrahmen stellen, Hand und Unterarm auf Schulterhöhe anlegen. Den Oberkörper langsam von der Wand wegdrehen, bis ein Zug in der Brust entsteht, und halten. Danach die Seite wechseln.',
     cues: ['Schulter bleibt tief.', 'Aus dem ganzen Oberkörper drehen, nicht ins Hohlkreuz gehen.'],
-    props: [{ t: 'wall', x: 26 }],
-    from: { w: null, ua: 180, fa: 180 },
-    poses: [{ hp: [50, 51], tr: 0, a: [58, 90], a2: [44, 90], w: [27, 22], ua2: 180, fa2: 180 }],
+    cam: 'top', props: [{ t: 'wall', x: 24 }],
+    poses: [
+      T_WALL,
+      T_WALL2,
+    ],
   },
   {
     id: 'schulter-dehnung', name: 'Schulterdehnung vor der Brust', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Schultern · Oberer Rücken', mode: 'time', side: true,
     t: { schulter: 1, oruecken: 0.5 },
     how: 'Aufrecht stehen und einen Arm gestreckt quer vor die Brust führen. Mit der anderen Hand oberhalb des Ellbogens sanft heranziehen und halten. Danach die Seite wechseln.',
     cues: ['Schultern locker und tief lassen.', 'Oberkörper nicht mitdrehen.'],
-    from: { w2: null, ua: 180, fa: 180, ua2: 180, fa2: 180 },
-    poses: [{ ...STAND, ua: 92, fa: 92, w2: [62, 25] }],
+    cam: 'front',
+    poses: [
+      { ...F_STAND, ...F_DOWN },
+      { ...F_STAND, eL: [33, 35], wL: [44, 27], eR: [44.5, 25], wR: [31.5, 26] },
+    ],
   },
   {
     id: 'bizeps-dehnung', name: 'Bizeps- und Unterarmdehnung', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Bizeps · Unterarm', mode: 'time', side: true,
@@ -1104,8 +1152,11 @@ export const EXERCISES = [
     t: { adduktoren: 1, gesaess: 0.3 },
     how: 'Aufrecht sitzen, Fußsohlen aneinander, Knie nach außen fallen lassen. Füße mit den Händen halten und die Fersen nah zum Körper ziehen. Knie sanft sinken lassen und halten.',
     cues: ['Knie nicht nach unten drücken.', 'Rücken lang lassen.'],
-    from: { tr: 0, th: 40, sh: 205 },
-    poses: [{ hp: [42, 86], tr: 8, th: 58, sh: 222, w: [52, 86], w2: [53, 86] }],
+    cam: 'front',
+    poses: [
+      { h: [50, 33], sL: [42, 46], sR: [58, 46], pL: [45, 75], pR: [55, 75], kL: [31, 64], kR: [69, 64], aL: [48, 85], aR: [52, 85], eL: [38, 60], wL: [47, 83], eR: [62, 60], wR: [53, 83] },
+      { h: [50, 35], sL: [42, 48], sR: [58, 48], pL: [45, 75], pR: [55, 75], kL: [26, 78], kR: [74, 78], aL: [48, 85], aR: [52, 85], eL: [37, 62], wL: [47, 83], eR: [63, 62], wR: [53, 83] },
+    ],
   },
   {
     id: 'figur-vier', name: 'Gesäßdehnung liegend (Figur 4)', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Gesäß · Unterer Rücken', mode: 'time', side: true,
@@ -1113,7 +1164,7 @@ export const EXERCISES = [
     how: 'Rückenlage, einen Fuß auf das andere Knie legen. Das untere Bein anheben, den Oberschenkel mit beiden Händen zur Brust ziehen und halten. Danach die Seite wechseln.',
     cues: ['Kopf und Schultern bleiben entspannt am Boden.', 'Knie des oberen Beins sanft nach außen öffnen.'],
     from: { th2: 45, sh2: 150, a: [66, 69], ab: 1, w: null, w2: null, ua: 90, fa: 90, ua2: 90, fa2: 90 },
-    poses: [{ hp: [52, 84], tr: 270, hd: 270, a: [46, 64], ab: 1, th2: 340, sh2: 75, w: [47, 73], w2: [48, 74] }],
+    poses: [{ hp: [52, 84], tr: 270, hd: 270, a: [46, 64], ab: 1, ff: -1, ff2: 1, th2: 340, sh2: 75, w: [47, 73], w2: [48, 74] }],
   },
   {
     id: 'hamstring-liegend', name: 'Oberschenkel hinten liegend', kind: 'stretch', pos: 'ruecken', equip: [], muscles: 'Hintere Oberschenkel · Wade', mode: 'time', side: true,
@@ -1129,8 +1180,11 @@ export const EXERCISES = [
     t: { seitrumpf: 1, uruecken: 0.6, rumpf: 0.4, gesaess: 0.3 },
     how: 'Rückenlage, Arme seitlich ablegen, beide Knie anwinkeln. Die Knie langsam zu einer Seite sinken lassen, den Blick zur anderen Seite drehen und halten. Zur Mitte zurück und die Seite wechseln.',
     cues: ['Beide Schultern bleiben am Boden.', 'Knie nur so weit sinken lassen, wie es angenehm ist.'],
-    from: { th: 18, sh: 160 },
-    poses: [{ hp: [54, 84], tr: 270, hd: 270, th: 45, sh: 140, ua: 300, fa: 300 }],
+    cam: 'top',
+    poses: [
+      T_KNEES,
+      { ...T_KNEES, pL: [47, 53], pR: [55, 56], kL: [66, 60], kR: [71, 66], aL: [64, 75], aR: [67, 83], nose: 270 },
+    ],
   },
   {
     id: 'hueftbeuger-stehend', name: 'Hüftbeuger im Stand', kind: 'stretch', pos: 'stand', equip: [], muscles: 'Hüftbeuger · Oberschenkel', mode: 'time', side: true,
@@ -1190,10 +1244,10 @@ export const TEMPO = {
   'kb-swing': 2, 'band-rudern': 2.5, 'band-brustpresse': 2.5,
   crawling: 2.5, 'reverse-lunge-knee': 3, 'seitlicher-ausfallschritt': 3, 'cossack-squat': 3.5, 'clock-lunges': 8,
   'bulgarian-split-squat': 3.5, 'einbeiniges-kreuzheben': 4, 'hip-thrust': 3, 'hip-thrust-einbeinig': 3, 'hamstring-bruecke': 3,
-  'good-morning': 3, 'kang-squat': 4.5, 'beincurl-kh': 3, 'diagonal-ausfallschritt-band': 3.5, 'jump-squat': 2, 'jump-lunge': 1.5,
-  einbeinsprung: 1, walkout: 6, 'wand-liegestuetz': 2.5, thruster: 3, 'snatch-einarmig': 2.5, 'snatch-beidarmig': 3, 'high-pull': 2.5,
-  'kreuzheben-push-press': 4, 'rdl-rudern': 5, 'burpee-kh': 5, 'goblet-reverse-lunge': 9, 'sumo-jump-squat': 2.5, 'einbein-rotation': 3,
-  seitheben: 3, 'seit-frontheben': 4, 'reverse-flys': 3, 'rudern-breit': 3, 'rudern-einarmig': 3, 'vierfuessler-rudern': 3,
+  'good-morning': 3, 'kang-squat': 4.5, 'beincurl-kh': 3, 'diagonal-ausfallschritt-band': 3.5, 'jump-squat': 2, 'jump-lunge': 1.8,
+  einbeinsprung: 1, walkout: 8, 'wand-liegestuetz': 2.5, thruster: 3, 'snatch-einarmig': 2.5, 'snatch-beidarmig': 3, 'high-pull': 2.5,
+  'kreuzheben-push-press': 7, 'rdl-rudern': 5, 'burpee-kh': 5, burpee: 5, 'goblet-reverse-lunge': 9, 'sumo-jump-squat': 2.5, 'einbein-rotation': 3,
+  seitheben: 3, 'seit-frontheben': 4, seitsprints: 4, 'reverse-flys': 3, 'rudern-breit': 3, 'rudern-einarmig': 3, 'vierfuessler-rudern': 3,
   'renegade-row': 3, 'floor-press': 3, flys: 3, 'skull-crusher': 3, 'trizeps-ueberkopf': 3, 'trizeps-plank': 3, 'push-plank': 4,
   'schulter-tippen': 1.5, 'plank-pull-through': 3, 'hollow-brustpresse': 2.5, 'schulterdruecken-kniend': 3, 'v-sit-schulterdruecken': 3,
   'around-the-world': 4, 'curl-arnold': 5, 'zottman-curl': 4, 'bizepscurl-seitlich': 3, 'curl-trizeps': 6, 'dead-bug': 3,
