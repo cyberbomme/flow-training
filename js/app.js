@@ -224,7 +224,8 @@ function pickText(pool, salt, i = 0) {
 const header = (title, back, right = LOGO) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
   <div class="head-row"><h1>${esc(title)}</h1>${right}</div></header>`;
 const more = (t) => `<span class="more">${esc(t)}${icon.chev}</span>`;
-// Overlay: x oben rechts, bleibt beim Scrollen stehen – als erstes Element in jedem .sheet
+// Overlay: x oben rechts, bleibt beim Scrollen stehen – erstes Element im .sheet.
+// Ausnahme: ist Schließen selbst eine Antwort („Weiter trainieren“, „Überspringen“), nur der benannte Knopf. Nie beides.
 const sheetX = (act) => `<button class="icon-btn sheet-x" data-act="${act}" aria-label="Schließen">${icon.x}</button>`;
 const pill = (t) => `<h2 class="pill-label">${t}</h2>`;
 const empty = (line, sub = '', cta = '') => `<div class="empty">${LEAF}<p class="serif">${line}</p>${sub ? `<p>${sub}</p>` : ''}${cta}</div>`;
@@ -249,8 +250,7 @@ function openInfo(id, from) {
     <div class="sheet info-sheet" role="dialog" aria-modal="true" aria-label="Anleitung: ${esc(ex.name)}">${sheetX('info-close')}
       <div class="info-top"><p class="serif">${esc(ex.name)}</p><span class="mini-t" hidden></span></div>
       <div class="fig-hero ${isStretch(ex) ? 'rose' : ''}"></div>
-      ${guideHTML(ex)}
-      <button class="btn big" data-act="info-close">Schließen</button></div>`;
+      ${guideHTML(ex)}</div>`;
   infoStop = animateFigure($('.fig-hero', overlay), ex, { period: figPeriod(ex) });
   updateInfoTimer();
   $('.sheet-x', overlay).focus({ preventScroll: true });
@@ -345,8 +345,7 @@ function viewCatalog(pickFor) {
       <p class="serif">Meine Ausrüstung</p>
       <div class="sheet-head"><p class="sheet-hint">Du siehst nur Übungen, für die du alles Nötige hast.</p><button class="link" data-act="equip-all">${db.equip.length === EQUIPMENT.length ? 'Alle abwählen' : 'Alle wählen'}</button></div>
       <div class="chips">${EQUIPMENT.map((e) => { const on = db.equip.includes(e.id);
-        return `<button class="chip ${on ? 'on' : ''}" data-act="equip" data-id="${e.id}" aria-pressed="${on}">${on ? icon.check : ''}${e.name}</button>`; }).join('')}</div>
-      <button class="btn primary big" data-act="equip-sheet-close">Fertig</button></div>` : ''}`;
+        return `<button class="chip ${on ? 'on' : ''}" data-act="equip" data-id="${e.id}" aria-pressed="${on}">${on ? icon.check : ''}${e.name}</button>`; }).join('')}</div></div>` : ''}`;
 }
 
 function renderCatalogList(pickFor) {
@@ -415,8 +414,7 @@ function viewExercise(id) {
           <span><b>${esc(sp.name)}</b><small>${n} ${st ? `Dehnung${n === 1 ? '' : 'en'}` : `Übung${n === 1 ? '' : 'en'}`}${draftOf(p.id) ? ' · nicht gespeichert' : ''}</small></span>${icon.plus}</button>`;
       }).join('')}</div>
       ${st && !plans.length ? '<p class="sheet-hint">Noch kein Dehnplan. Dehnungen und Kraftübungen stehen immer in getrennten Plänen.</p>' : ''}
-      <button class="btn" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}${st ? 'Neuer Dehnplan' : 'Neuer Plan'}</button>
-      <button class="btn text" data-act="add-sheet-close">Abbrechen</button></div>` : ''}`;
+      <button class="btn" data-act="add-to-new" data-ex="${ex.id}">${icon.plus}${st ? 'Neuer Dehnplan' : 'Neuer Plan'}</button></div>` : ''}`;
 }
 
 // ── Listenzeile (Baukasten): Kreis-Icon · Titel · eine Unterzeile · rechts ein Element ──
@@ -461,8 +459,7 @@ function newPlanSheet() {
       <div class="sheet-list">
         <button class="sheet-row" data-act="new-plan-kind" data-kind="kraft">${planIconHTML('Kraft', [], 'sm')}<span><b>Kraftplan</b><small>Übungen mit Sätzen, Supersets und Pausen</small></span>${icon.chev}</button>
         <button class="sheet-row" data-act="new-plan-kind" data-kind="dehnen">${planIconHTML('', [], 'sm', 'stretch')}<span><b>Dehnplan</b><small>Dehnungen zum Halten, ohne Verlauf</small></span>${icon.chev}</button>
-      </div>
-      <button class="btn text" data-act="new-close">Abbrechen</button></div>`;
+      </div></div>`;
 }
 
 const tplEquip = (exs) => {
@@ -496,8 +493,7 @@ function templateSheet(id) {
       <p class="sheet-hint">${esc(t.note)}</p>
       <div class="listbox">${rows}</div>
       ${taken ? `<p class="sheet-hint ok">${icon.check}Schon in deinen Plänen</p>` : ''}
-      <button class="btn primary big" data-act="tpl-add" data-tpl="${t.id}">${icon.plus}${taken ? 'Nochmal übernehmen' : 'Übernehmen'}</button>
-      <button class="btn text" data-act="tpl-close">Abbrechen</button></div>`;
+      <button class="btn primary big" data-act="tpl-add" data-tpl="${t.id}">${icon.plus}${taken ? 'Nochmal übernehmen' : 'Übernehmen'}</button></div>`;
 }
 
 function viewPlanEditor(id) {
@@ -539,8 +535,7 @@ function planMenuSheet(p, dirty) {
         ${dirty ? `<button class="li" data-act="draft-discard" data-plan="${p.id}">${icon.undo}<span>Änderungen verwerfen</span></button>` : ''}
         <button class="li danger" data-act="del-plan" data-plan="${p.id}">${icon.trash}<span>Plan löschen</span></button>
       </div>
-      <p class="sheet-hint">Der Verlauf bleibt beim Löschen erhalten.</p>
-      <button class="btn text" data-act="plan-menu-close">Abbrechen</button></div>`;
+      <p class="sheet-hint">Der Verlauf bleibt beim Löschen erhalten.</p></div>`;
 }
 
 function startAskSheet(id) {
@@ -549,8 +544,7 @@ function startAskSheet(id) {
       <p class="serif">Änderungen speichern?</p>
       <p class="sheet-hint">Du kannst den Plan auch nur heute so trainieren. Nach dem Training werden die Änderungen dann verworfen.</p>
       <button class="btn primary big" data-act="save-start" data-plan="${id}">${icon.play}Speichern &amp; starten</button>
-      <button class="btn" data-act="start-draft" data-plan="${id}">Ohne Speichern starten</button>
-      <button class="btn text" data-act="start-ask-close">Abbrechen</button></div>`;
+      <button class="btn" data-act="start-draft" data-plan="${id}">Ohne Speichern starten</button></div>`;
 }
 
 // Einheitliche Zeile: Kreis · Name + Werte · Griff. Antippen klappt die Regler auf.
@@ -772,7 +766,7 @@ function viewTraining() {
   const A = db.active;
   if (!A) return header('Training') + empty('Gerade läuft kein Training.', '', `<a class="btn primary" href="#/plaene">Plan starten</a>`);
   const step = A.steps[A.idx];
-  const sheet = exitSheet ? `<div class="sheet-bg" data-act="exit-cancel"></div><div class="sheet" role="dialog" aria-label="Training beenden?">${sheetX('exit-cancel')}
+  const sheet = exitSheet ? `<div class="sheet-bg" data-act="exit-cancel"></div><div class="sheet" role="dialog" aria-label="Training beenden?">
       <p class="serif">Training beenden?</p>
       <button class="btn primary" data-act="finish">Beenden &amp; speichern</button>
       <button class="btn" data-act="exit-cancel">Weiter trainieren</button>
@@ -1023,7 +1017,7 @@ const offerDone = () => (db.active ? activeExercises().map(({ it }) => ({ exId: 
 function stretchAskSheet() {
   const o = autoStretch(stretchAsk.done);
   return `<div class="sheet-bg" data-act="stretch-skip"></div>
-    <div class="sheet stretch-sheet" role="dialog" aria-label="Passende Dehnungen zum Abschluss">${sheetX('stretch-skip')}
+    <div class="sheet stretch-sheet" role="dialog" aria-label="Passende Dehnungen zum Abschluss">
       <div class="tpl-top">${planIconHTML('', [], '', 'stretch')}<div><p class="serif">Passende Dehnungen zum Abschluss?</p>
         <small>${o.focus.length ? `Für ${o.focus.join(', ')}` : 'Zum Lockern nach dem Training'}</small></div></div>
       ${(() => { const nm = (f) => o.items.filter(f).map((it) => esc(byId[it.exId].name)).join(' · ');

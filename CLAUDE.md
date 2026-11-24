@@ -26,8 +26,9 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
 - **An / aus:** Schalter (`input.switch` mit `role="switch"`), keine Kästchen.
 - **Listenzeile:** `lrow()` – Kreis-Icon · Titel · eine Unterzeile · rechts ein Element (Chevron, Griff, Play oder Wert).
   Gruppierte Liste (Einstellungen, Sheets): `.listbox` mit `.li`.
-- **Overlay (`.sheet`):** immer mit x oben rechts (`sheetX`, erstes Element, bleibt beim Scrollen stehen; entschieden 2026-11-24 statt Balken zum
-  Herunterschieben – der kollidiert mit dem Scrollen). Antippen des Hintergrunds schließt ebenfalls.
+- **Overlay (`.sheet`):** schließt mit x oben rechts (`sheetX`, erstes Element, bleibt beim Scrollen stehen), kein „Abbrechen/Schließen/Fertig“ dazu.
+  Ist Schließen selbst eine Antwort auf eine Frage („Weiter trainieren“, „Überspringen“), steht stattdessen nur der benannte Knopf, kein x. Nie beides.
+  Kein Balken zum Herunterschieben (kollidiert mit dem Scrollen). Antippen des Hintergrunds schließt immer. (Entschieden 2026-11-24.)
 - **Übungsinfo** (Konzept A, 2026-11-24): Figur mit „i“ antippen (`infoTap`) öffnet die Anleitung – Plan-Editor, Training, „Als Nächstes“.
   Liegt außerhalb von `main`, der Timer läuft weiter, Restzeit im Overlay.
 - Plan-Editor: „···“ oben rechts bleibt immer (Kopieren, Verwerfen, Löschen), wird nie durch „Speichern“ ersetzt.
