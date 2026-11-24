@@ -51,7 +51,7 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   `alt: true` = jede zweite Wiederholung mit der anderen Seite, `fd` = Fußrichtung,
   `dur` = Gewicht je Abschnitt, `rev: true` = jede zweite Wiederholung rückwärts. Ansichten `cam: 'front' | 'top'` (Bewegungen zur Seite): Posen als Punkte
   mit Schulter- und Hüftbreite (`wideSVG`), Hinweis „Von vorn/Von oben“ im Bild. Bewegungen zur Seite nie in die Seitenansicht zwingen.
-  Dehnungen bleiben bei zwei Posen (Training hält bei Phase 0,5). Prüfseite: `docs/figuren-review.html` (nicht im Offline-Cache).
+  Dehnungen bleiben bei zwei Posen (Training hält bei Phase 0,5).
 - Plan-Icons automatisch (`js/planicon.js`): erst Stichwort im Titel (Zyklusphasen, HIIT, Mobilität, Regeneration, Klettern,
   Core, Beine, Oberkörper, Ganzkörper, Kraft), sonst aus Muskelgruppen/Zeitanteil der Übungen.
 - Version steht nur in `js/version.js` (Anzeige in *Einstellungen*, Cache-Name im Service Worker). Bei jedem Deploy hochzählen.
@@ -131,6 +131,17 @@ Statische PWA (Vanilla JS, kein Build), primär fürs iPhone, gehostet auf GitHu
   - HealthKit ist nur für native Apps zugänglich, nicht für die PWA. Weg (2026-11-24): als Teil der nativen App, s. u.
     Alternative ohne App bliebe ein Kurzbefehl (`shortcuts://run-shortcut?name=…&input=text&text=…`), ungeprüft.
   - Zu klären: ob Strava bzw. WHOOP Trainings ohnehin nach Apple Health weiterreichen (dann reicht evtl. ein Weg).
+- **Figuren: Details, die noch vom Text abweichen** (gefunden 2026-11-24 beim Review zu 1.15.0, noch nicht gebaut):
+  - Hantel zu weit vom Bein: Rumänisches und einbeiniges Kreuzheben (Vorbild: Pose in `kreuzheben-push-press`, Arme `ua/fa: 208`).
+  - Haltung: Wand-Liegestütz (Knie gebeugt, Arme am Start nicht gestreckt), TRX-Rudern (Körper keine Linie), TRX-Überkopf-Kniebeuge (Arme schräg vorn
+    statt über Kopf), Hüftheben auf Box (Knie rund 100° statt leicht gebeugt), Kniebeuge und Goblet Squat (35–40° Vorlage, Text sagt aufrecht).
+  - Dehnen: Latissimus und Katze-Kuh (Arme gebeugt), Oberschenkel vorn (Knie nicht nebeneinander), Trizeps (Kopf geneigt, Hand nicht zwischen den
+    Schulterblättern), Hüftbeuger im Stand (Ferse nicht hoch).
+  - Rudergerät: Füße rutschen. Uhr-Ausfallschritte: Schritt zur Seite in der Seitenansicht nur angedeutet.
+  - Startpose: Bankdrücken (beide), Floor Press, Hollow-Brustpresse, Thruster und Sumo-Sprung beginnen unten, der Text oben.
+  - Nur eine Seite gezeigt: Schattenboxen, Schultertippen, Renegade Row, Plank Pull-Through (`alt: true` prüfen).
+  - Abgeschnittene Arme im Bild: Sprungkniebeuge, einbeinige Sprünge (`view` vergrößern).
+- **Meldung „Gespeichert …“ verdeckt kurz „Dehnen starten“** (gefunden 2026-11-24): Toast liegt nach dem Training über dem Overlay „Passende Dehnungen?“.
 - **Native App für iPhone, danach Android** (Wunsch 2026-11-19, Konzept vom Besitzer bestätigt 2026-11-24, noch nicht gebaut):
   - **Prinzip:** Capacitor-Hülle, kein Neuschreiben in Swift/Kotlin. Eine Codebasis für Web, iOS und Android, gemeinsam weiterentwickelt.
     Die Web-App auf GitHub Pages bleibt (Teilen im privaten Umfeld) und verhält sich gleich. Entwicklung auf Branch `ios-app`.
