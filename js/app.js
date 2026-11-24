@@ -177,6 +177,7 @@ const icon = {
   pause: '<svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></svg>',
   stop: '<svg viewBox="0 0 24 24"><rect class="fill" x="7" y="7" width="10" height="10" rx="1.5"/></svg>',
   rest: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 2M10 3.5h4"/></svg>',
+  info: '<svg viewBox="0 0 24 24"><path d="M12 10.5v7M12 6.5v.2"/></svg>',
   grip: '<svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg>',
   chev: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
@@ -223,14 +224,56 @@ function pickText(pool, salt, i = 0) {
 const header = (title, back, right = LOGO) => `<header class="app-head">${back ? `<a class="back" href="${back[0]}">${icon.back}${esc(back[1])}</a>` : ''}
   <div class="head-row"><h1>${esc(title)}</h1>${right}</div></header>`;
 const more = (t) => `<span class="more">${esc(t)}${icon.chev}</span>`;
+// Overlay: x oben rechts, bleibt beim Scrollen stehen – als erstes Element in jedem .sheet
+const sheetX = (act) => `<button class="icon-btn sheet-x" data-act="${act}" aria-label="Schließen">${icon.x}</button>`;
 const pill = (t) => `<h2 class="pill-label">${t}</h2>`;
 const empty = (line, sub = '', cta = '') => `<div class="empty">${LEAF}<p class="serif">${line}</p>${sub ? `<p>${sub}</p>` : ''}${cta}</div>`;
 const circleFig = (ex, cls = "") => `<div class="ic-circle ${cls}">${figureStatic(ex, true)}</div>`;
 
+// ── Übungsinfo (Konzept A, entschieden 2026-11-24) ────────
+// Figur antippen öffnet „So geht’s“ und „Worauf ich achte“ – im Plan-Editor, im Training und bei „Als Nächstes“.
+// Liegt außerhalb von main: ein Schrittwechsel im Training lässt die geöffnete Info (Scrollstand, Animation) in Ruhe.
+const infoTap = (ex, inner, cls = '') => `<button class="info-tap ${cls}" data-act="info" data-ex="${ex.id}" aria-label="Anleitung: ${esc(ex.name)}">${inner}<span class="info-i">${icon.info}</span></button>`;
+// Anleitungstexte, gleich auf der Übungsseite und im Overlay
+const guideHTML = (ex) => `<div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(ex.how)}</p></div></div>
+    ${ex.cues?.length ? pill('Worauf ich achte') + `<ul class="checklist">${ex.cues.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}`;
+const figPeriod = (ex) => (isStretch(ex) && !ex.dynamic ? STRETCH_PERIOD : tempoOf(ex.id));
+const overlay = document.body.appendChild(document.createElement('div'));
+let infoStop = null, infoFrom = null;
+function openInfo(id, from) {
+  const ex = byId[id];
+  if (!ex) return;
+  closeInfo();
+  infoFrom = from;
+  overlay.innerHTML = `<div class="sheet-bg" data-act="info-close"></div>
+    <div class="sheet info-sheet" role="dialog" aria-modal="true" aria-label="Anleitung: ${esc(ex.name)}">${sheetX('info-close')}
+      <div class="info-top"><p class="serif">${esc(ex.name)}</p><span class="mini-t" hidden></span></div>
+      <div class="fig-hero ${isStretch(ex) ? 'rose' : ''}"></div>
+      ${guideHTML(ex)}
+      <button class="btn big" data-act="info-close">Schließen</button></div>`;
+  infoStop = animateFigure($('.fig-hero', overlay), ex, { period: figPeriod(ex) });
+  updateInfoTimer();
+  $('.sheet-x', overlay).focus({ preventScroll: true });
+}
+function closeInfo() {
+  infoStop?.(); infoStop = null;
+  overlay.innerHTML = '';
+  const el = infoFrom; infoFrom = null;
+  if (el?.isConnected) el.focus({ preventScroll: true });
+}
+// Restzeit im Overlay: läuft im Training weiter mit
+function updateInfoTimer() {
+  const el = $('.mini-t', overlay), t = db.active?.timer;
+  if (!el) return;
+  el.hidden = !(t && route()[0] === 'training');
+  if (!el.hidden) el.textContent = timerState(t).value;
+}
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && overlay.innerHTML) closeInfo(); });
+
 // ── Router ────────────────────────────────────────────────
 const route = () => (location.hash.slice(2) || 'plaene').split('/').map(decodeURIComponent);
 const go = (h) => { location.hash = '#/' + h; };
-window.addEventListener('hashchange', () => { equipSheet = false; pickSel = []; render(); });
+window.addEventListener('hashchange', () => { closeInfo(); equipSheet = false; pickSel = []; render(); });
 
 function render() {
   if (location.hash !== lastHash) { addSheet = false; tplSheet = null; planMenu = false; startAsk = null; newSheet = false; } // Fenster nicht auf neue Seiten mitnehmen
@@ -258,12 +301,13 @@ function render() {
   for (const el of $$('[data-anim]', main)) {
     const id = el.dataset.anim;
     const synced = view === 'training' && !!db.active?.timer;
-    stops.push(animateFigure(el, byId[id], { period: isStretch(byId[id]) && !byId[id].dynamic ? STRETCH_PERIOD : tempoOf(id), phase: synced ? () => trainingPhase(id) : undefined }));
+    stops.push(animateFigure(el, byId[id], { period: figPeriod(byId[id]), phase: synced ? () => trainingPhase(id) : undefined }));
   }
   if (view === 'katalog' || (view === 'plan' && b === 'add')) renderCatalogList(b === 'add' ? a : null);
   if (view === 'fortschritt') drawChart();
   if (view === 'training') startTicker();
   manageWakeLock(view === 'training');
+  updateInfoTimer();
 
   $$('.tabbar a').forEach((t) => t.classList.toggle('on', t.dataset.tab === tabOf(view)));
   const banner = $('#resume');
@@ -297,9 +341,9 @@ function viewCatalog(pickFor) {
     <div id="list" class="lgroup"></div>
     ${pickFor ? '<div id="pick-bar"></div>' : ''}
     ${equipSheet ? `<div class="sheet-bg" data-act="equip-sheet-close"></div>
-    <div class="sheet equip-sheet" role="dialog" aria-label="Meine Ausrüstung">
-      <div class="sheet-head"><p class="serif">Meine Ausrüstung</p><button class="link" data-act="equip-all">${db.equip.length === EQUIPMENT.length ? 'Alle abwählen' : 'Alle wählen'}</button></div>
-      <p class="sheet-hint">Du siehst nur Übungen, für die du alles Nötige hast.</p>
+    <div class="sheet equip-sheet" role="dialog" aria-label="Meine Ausrüstung">${sheetX('equip-sheet-close')}
+      <p class="serif">Meine Ausrüstung</p>
+      <div class="sheet-head"><p class="sheet-hint">Du siehst nur Übungen, für die du alles Nötige hast.</p><button class="link" data-act="equip-all">${db.equip.length === EQUIPMENT.length ? 'Alle abwählen' : 'Alle wählen'}</button></div>
       <div class="chips">${EQUIPMENT.map((e) => { const on = db.equip.includes(e.id);
         return `<button class="chip ${on ? 'on' : ''}" data-act="equip" data-id="${e.id}" aria-pressed="${on}">${on ? icon.check : ''}${e.name}</button>`; }).join('')}</div>
       <button class="btn primary big" data-act="equip-sheet-close">Fertig</button></div>` : ''}`;
@@ -352,20 +396,18 @@ function viewExercise(id) {
   const ex = byId[id];
   if (!ex) return header('Übung') + empty('Diese Übung gibt es nicht (mehr).');
   const st = isStretch(ex), last = st ? null : lastFor(id);
-  const cues = ex.cues || [];
   const kindBadge = st ? (ex.side ? 'Halten · je Seite' : 'Halten') : ex.mode === 'time' ? (ex.side ? 'Auf Zeit · je Seite' : 'Auf Zeit') : ex.side ? 'Wiederholungen je Seite' : 'Wiederholungen';
   const plans = db.plans.filter((p) => isStretchPlan(p) === st);
   return header(ex.name, ['#/katalog', 'Übungen']) + `
     <div class="fig-hero ${st ? 'rose' : ''}" data-anim="${ex.id}"></div>
     <p class="overline">${st ? 'Dehnen · ' : ''}${esc(ex.muscles)}</p>
     <div class="badges"><span class="badge">${equipNames(ex)}</span><span class="badge">${kindBadge}</span></div>
-    <div class="info-box"><span class="ic">${icon.bulb}</span><div><b>So geht’s</b><p>${esc(ex.how)}</p></div></div>
-    ${cues.length ? pill('Worauf ich achte') + `<ul class="checklist">${cues.map((p) => `<li><span class="ck">${icon.check}</span><span>${esc(p)}</span></li>`).join('')}</ul>` : ''}
+    ${guideHTML(ex)}
     ${st ? '' : tempoField(ex)}
     ${last ? `<a class="row-link" href="#/fortschritt/${ex.id}"><span>Zuletzt ${fmtDate(last.date)}: ${setsText(last.sets, last.mode)}</span><span class="more">Verlauf</span></a>` : ''}
     <button class="btn primary big" data-act="add-sheet">${icon.plus}Zu Plan hinzufügen</button>
     ${addSheet ? `<div class="sheet-bg" data-act="add-sheet-close"></div>
-    <div class="sheet add-sheet" role="dialog" aria-label="Zu Plan hinzufügen">
+    <div class="sheet add-sheet" role="dialog" aria-label="Zu Plan hinzufügen">${sheetX('add-sheet-close')}
       <p class="serif">${esc(ex.name)} hinzufügen zu …</p>
       <div class="sheet-list">${plans.map((p) => {
         const sp = shownPlan(p.id), n = planEstimate(sp).n;
@@ -414,7 +456,7 @@ function viewPlans() {
 // „+“ bei Filter „Alle“: Art wählen. Bei Filter Kraft/Dehnen wird direkt ein Plan dieser Art angelegt.
 function newPlanSheet() {
   return `<div class="sheet-bg" data-act="new-close"></div>
-    <div class="sheet menu-sheet" role="dialog" aria-label="Neuer Plan">
+    <div class="sheet menu-sheet" role="dialog" aria-label="Neuer Plan">${sheetX('new-close')}
       <p class="serif">Neuer Plan</p>
       <div class="sheet-list">
         <button class="sheet-row" data-act="new-plan-kind" data-kind="kraft">${planIconHTML('Kraft', [], 'sm')}<span><b>Kraftplan</b><small>Übungen mit Sätzen, Supersets und Pausen</small></span>${icon.chev}</button>
@@ -449,7 +491,7 @@ function templateSheet(id) {
   const exs = planExercises(t), est = planEstimate(t), taken = db.plans.some((p) => p.tpl === t.id);
   const rows = PE.flatten(t.items).map(({ it, label }) => `<div class="li"><span>${label ? `<span class="tag-l">${label}</span> ` : ''}${esc(byId[it.exId].name)}</span><small>${exSummary(it, !!label).replace(/ · Pause \d+ s$/, '')}</small></div>`).join('');
   return `<div class="sheet-bg" data-act="tpl-close"></div>
-    <div class="sheet tpl-sheet" role="dialog" aria-label="Vorlage ${esc(t.name)}">
+    <div class="sheet tpl-sheet" role="dialog" aria-label="Vorlage ${esc(t.name)}">${sheetX('tpl-close')}
       <div class="tpl-top">${planIconHTML(t.name, exs, '', t.kind)}<div><p class="serif">${esc(t.name)}</p><small>${planMeta(est)} · ${tplEquip(exs)}</small></div></div>
       <p class="sheet-hint">${esc(t.note)}</p>
       <div class="listbox">${rows}</div>
@@ -490,7 +532,7 @@ function editorBar(id, dirty, n) {
 
 function planMenuSheet(p, dirty) {
   return `<div class="sheet-bg" data-act="plan-menu-close"></div>
-    <div class="sheet menu-sheet" role="dialog" aria-label="Weitere Aktionen">
+    <div class="sheet menu-sheet" role="dialog" aria-label="Weitere Aktionen">${sheetX('plan-menu-close')}
       <p class="serif">${esc(p.name)}</p>
       <div class="listbox">
         <button class="li" data-act="dup-plan" data-plan="${p.id}">${icon.copy}<span>Plan kopieren</span></button>
@@ -503,7 +545,7 @@ function planMenuSheet(p, dirty) {
 
 function startAskSheet(id) {
   return `<div class="sheet-bg" data-act="start-ask-close"></div>
-    <div class="sheet" role="dialog" aria-label="Änderungen speichern?">
+    <div class="sheet" role="dialog" aria-label="Änderungen speichern?">${sheetX('start-ask-close')}
       <p class="serif">Änderungen speichern?</p>
       <p class="sheet-hint">Du kannst den Plan auch nur heute so trainieren. Nach dem Training werden die Änderungen dann verworfen.</p>
       <button class="btn primary big" data-act="save-start" data-plan="${id}">${icon.play}Speichern &amp; starten</button>
@@ -525,7 +567,7 @@ function exRow(p, it, group, idx) {
   const label = group ? `<span class="tag-l">${PE.letterOf(p.items, group.id)}${idx + 1}</span>` : '';
   const open = planOpen === it.id;
   return `<div class="prow ${open ? 'open' : ''}" data-id="${it.id}" data-kind="${group ? 'member' : 'ex'}">
-    <div class="prow-main" data-act="ptoggle" role="button" aria-expanded="${open}">${circleFig(ex, isStretch(ex) ? 'sm rose' : 'sm')}
+    <div class="prow-main" data-act="ptoggle" role="button" aria-expanded="${open}">${infoTap(ex, circleFig(ex, isStretch(ex) ? 'sm rose' : 'sm'))}
       <div class="prow-txt"><b><span>${esc(ex.name)}</span></b><small>${label}${exSummary(it, !!group)}</small></div>${grip}</div>
     ${open ? planFields(it, group ? 'member' : 'ex') : ''}</div>`;
 }
@@ -730,7 +772,7 @@ function viewTraining() {
   const A = db.active;
   if (!A) return header('Training') + empty('Gerade läuft kein Training.', '', `<a class="btn primary" href="#/plaene">Plan starten</a>`);
   const step = A.steps[A.idx];
-  const sheet = exitSheet ? `<div class="sheet-bg" data-act="exit-cancel"></div><div class="sheet">
+  const sheet = exitSheet ? `<div class="sheet-bg" data-act="exit-cancel"></div><div class="sheet" role="dialog" aria-label="Training beenden?">${sheetX('exit-cancel')}
       <p class="serif">Training beenden?</p>
       <button class="btn primary" data-act="finish">Beenden &amp; speichern</button>
       <button class="btn" data-act="exit-cancel">Weiter trainieren</button>
@@ -757,7 +799,7 @@ function viewTraining() {
   const counted = !!A.timer;
   const setLine = step.ss ? `<span class="tag-l">${step.ss}</span> Runde ${step.set + 1} von ${step.of}` : `Satz ${step.set + 1} von ${it.sets}`;
   return trScreen({
-    hero: `<div class="fig-tr ${counted ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${counted ? figRing() : ''}</div>`,
+    hero: infoTap(ex, `<div class="fig-tr ${counted ? 'timed' : ''}"><div class="fig-anim" data-anim="${ex.id}"></div>${counted ? figRing() : ''}</div>`, 'big'),
     title: esc(ex.name),
     sub: `${step.side ? `${sideTxt(step)} · ` : ''}${setLine} · Ziel ${step.side ? `${it.dur} s` : target}${it.weight ? ` × ${fmtNum(it.weight)} kg` : ''}`,
     card1: counted ? timerCard() : stepper('reps', 'Wiederholungen', A.cur.reps, 1),
@@ -775,7 +817,7 @@ function viewStretchStep(step) {
   const parts = [sideTxt(step), `Dehnung ${step.no} von ${A.nStretch}`];
   if (it.sets > 1) parts.push(`Durchgang ${step.set + 1} von ${it.sets}`);
   return trScreen({
-    hero: `<div class="fig-tr rose timed"><div class="fig-anim" data-anim="${ex.id}"></div>${figRing()}</div>`,
+    hero: infoTap(ex, `<div class="fig-tr rose timed"><div class="fig-anim" data-anim="${ex.id}"></div>${figRing()}</div>`, 'big'),
     title: esc(ex.name),
     sub: parts.filter(Boolean).join(' · '),
     card1: timerCard(),
@@ -845,13 +887,14 @@ function nextWeightCard() {
 // „Als Nächstes“: kleine Vorschau mit Piktogramm – auf Übungs- und Pausen-Screens gleich
 function nextCard() {
   const A = db.active, cur = A.steps[A.idx], nx = A.steps[A.idx + 1];
-  let ic, title, sub, over = 'Als Nächstes';
+  let ic, title, sub, over = 'Als Nächstes', tap = '';
   if (!nx) { ic = `<div class="ic-circle sm">${icon.check}</div>`; title = 'Abschluss'; sub = 'Gleich geschafft'; }
   else if (nx.k === 'rest') { ic = `<div class="ic-circle sm rose">${icon.rest}</div>`; title = 'Pause'; sub = `${nx.dur} s`; }
   else {
     const it = itemOf(nx), ex = byId[it.exId];
     if (cur.k === 'work' && cur.ss && nx.ss && nx.set === cur.set) over = 'Danach direkt';
-    ic = circleFig(ex, isStretch(ex) ? 'sm rose' : 'sm');
+    ic = infoTap(ex, circleFig(ex, isStretch(ex) ? 'sm rose' : 'sm'));
+    tap = `data-act="info" data-ex="${ex.id}"`;
     title = `${nx.ss ? `<span class="tag-l">${nx.ss}</span> ` : ''}${esc(ex.name)}`;
     if (isStretch(ex)) {
       if (cur.k === 'work' && cur.item === nx.item) over = 'Danach';
@@ -861,7 +904,7 @@ function nextCard() {
       sub = [sideTxt(nx), nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`, `${it.dur} s`].join(' · ');
     } else sub = `${nx.ss ? `Runde ${nx.set + 1} von ${nx.of}` : `Satz ${nx.set + 1} von ${it.sets}`} · ${amountTxt(it)}${it.weight ? ` · ${fmtNum(it.weight)} kg` : ''}`;
   }
-  return `<div class="next-card">${ic}<div class="next-txt"><small class="next-over">${over}</small><b>${title}</b><small>${sub}</small></div></div>`;
+  return `<div class="next-card ${tap ? 'can-tap' : ''}" ${tap}>${ic}<div class="next-txt"><small class="next-over">${over}</small><b>${title}</b><small>${sub}</small></div></div>`;
 }
 
 function stepper(key, label, val, step, ph = '') {
@@ -922,6 +965,7 @@ function startTicker() {
     const t = A.timer;
     if (!t || db.active !== A) return;
     const z = timerState(t), r = z.r;
+    updateInfoTimer();
     const d = $('#tdisp'), ring = $('.fig-ring .ring'), lb = $('#tlabel');
     if (d) d.textContent = z.value;
     if (ring) ring.setAttribute('stroke-dashoffset', 100 - z.frac * 100);
@@ -979,7 +1023,7 @@ const offerDone = () => (db.active ? activeExercises().map(({ it }) => ({ exId: 
 function stretchAskSheet() {
   const o = autoStretch(stretchAsk.done);
   return `<div class="sheet-bg" data-act="stretch-skip"></div>
-    <div class="sheet stretch-sheet" role="dialog" aria-label="Passende Dehnungen zum Abschluss">
+    <div class="sheet stretch-sheet" role="dialog" aria-label="Passende Dehnungen zum Abschluss">${sheetX('stretch-skip')}
       <div class="tpl-top">${planIconHTML('', [], '', 'stretch')}<div><p class="serif">Passende Dehnungen zum Abschluss?</p>
         <small>${o.focus.length ? `Für ${o.focus.join(', ')}` : 'Zum Lockern nach dem Training'}</small></div></div>
       ${(() => { const nm = (f) => o.items.filter(f).map((it) => esc(byId[it.exId].name)).join(' · ');
@@ -1269,6 +1313,8 @@ document.addEventListener('click', (ev) => {
       save(); render();
       break;
     }
+    case 'info': openInfo(btn.dataset.ex, btn); break;
+    case 'info-close': closeInfo(); break;
     case 'equip-sheet': equipSheet = true; render(); break;
     case 'cat-kind': db.catKind = btn.dataset.kind; catQuery = ''; save(); render(); break;
     case 'plan-filter': db.planFilter = btn.dataset.f; save(); render(); break;

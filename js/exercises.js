@@ -19,6 +19,10 @@ const OVERHEAD = '0 -8 100 100';
 const F_LEGS = { pL: [46, 50], pR: [54, 50], kL: [45.5, 70], kR: [54.5, 70], aL: [45, 90], aR: [55, 90] };
 const F_STAND = { h: [50, 12], sL: [42, 23], sR: [58, 23], ...F_LEGS };
 const F_DOWN = { eL: [41, 37], wL: [40.5, 50], eR: [59, 37], wR: [59.5, 50] };
+const F_WIDE = { h: [50, 17], sL: [42, 28], sR: [58, 28], pL: [46, 55], pR: [54, 55], kL: [35.5, 72], kR: [64.5, 72], aL: [25, 90], aR: [75, 90], eL: [40, 41], wL: [48, 37], eR: [60, 41], wR: [52, 37] };
+const F_COSSACK = { h: [33, 37], sL: [25, 47], sR: [41, 47], pL: [28, 72], pR: [36, 72], kL: [17, 75], kR: [55, 81], aL: [25, 90], aR: [75, 90], eL: [23, 60], wL: [31, 55], eR: [44, 60], wR: [35, 55] };
+// An der Bildmitte spiegeln (links ↔ rechts)
+const flipLR = (P) => Object.fromEntries(Object.entries(P).map(([k, v]) => (Array.isArray(v) ? [k.replace(/[LR]$/, (c) => (c === 'L' ? 'R' : 'L')), [100 - v[0], v[1]]] : [k, v])));
 const F_BENT = { h: [50, 50], sL: [41, 46], sR: [59, 46] };
 const F_HANG = { eL: [40, 60], wL: [41, 73], eR: [60, 60], wR: [59, 73] };
 const T_LIE = { h: [50, 15], sL: [42, 28], sR: [58, 28], pL: [45, 54], pR: [55, 54] };
@@ -347,13 +351,13 @@ export const EXERCISES = [
     ],
   },
   {
-    id: 'crossleg-jumps', front: true, name: 'Hampelmann mit Überkreuzen', equip: [], muscles: 'Oberschenkel · Schultern · Ausdauer', mode: 'time',
+    id: 'crossleg-jumps', name: 'Hampelmann mit Überkreuzen', equip: [], muscles: 'Oberschenkel · Schultern · Ausdauer', mode: 'time',
     how: 'Aufrecht stehen. Abspringen, die Beine in der Luft grätschen und die Arme über den Kopf schwingen. Beim nächsten Sprung mit überkreuzten Beinen landen und die Arme vor dem Körper zusammenführen. Bei jedem Kreuzen das vordere Bein wechseln.',
     cues: ['Leicht und federnd auf den Fußballen landen.'],
-    view: OVERHEAD,
+    cam: 'front', view: '-7 -14 114 114',
     poses: [
-      { hp: [50, 50], tr: 0, a: [57, 90], a2: [43, 90], ua: 160, fa: 160, ua2: 200, fa2: 200 },
-      { hp: [50, 48], tr: 0, a: [32, 88], a2: [68, 88], ua: 35, fa: 25, ua2: 325, fa2: 335 },
+      { ...F_STAND, kL: [50.5, 70], kR: [49.5, 70], aL: [57, 90], aR: [43, 90], eL: [41, 36], wL: [51, 44], eR: [59, 36], wR: [49, 44] },
+      { h: [50, 6], sL: [42, 17], sR: [58, 17], pL: [46, 44], pR: [54, 44], kL: [38, 63], kR: [62, 63], aL: [29, 82], aR: [71, 82], eL: [33, 6], wL: [30, -7], eR: [67, 6], wR: [70, -7] },
     ],
   },
   {
@@ -433,12 +437,14 @@ export const EXERCISES = [
     ],
   },
   {
-    id: 'cossack-squat', front: true, name: 'Kosakenkniebeuge (Cossack Squat)', equip: [], muscles: 'Oberschenkel · Gesäß · Adduktoren', mode: 'reps', side: true,
+    id: 'cossack-squat', name: 'Kosakenkniebeuge (Cossack Squat)', equip: [], muscles: 'Oberschenkel · Gesäß · Adduktoren', mode: 'reps', side: true,
     how: 'Sehr breiter Stand, Zehen leicht nach außen. Gewicht auf eine Seite verlagern und tief in dieses Knie sinken, das andere Bein streckt sich, Zehen zeigen nach oben. Zur Mitte zurück und zur anderen Seite.',
     cues: ['Oberkörper aufrecht, Ferse des gebeugten Beins bleibt am Boden.', 'Variante: gehend, mit jedem Schritt die Seite wechseln.'],
+    cam: 'front', seq: [0, 1, 0, 2],
     poses: [
-      { hp: [50, 55], tr: 0, a: [30, 90], a2: [70, 90], ab: 1, ua: 150, fa: 60, ua2: 210, fa2: 300 },
-      { hp: [37, 73], tr: 5, a: [30, 90], a2: [76, 88], ab: 1, ua: 120, fa: 80, ua2: 240, fa2: 280 },
+      F_WIDE,
+      F_COSSACK,
+      flipLR(F_COSSACK),
     ],
   },
   {
@@ -669,10 +675,11 @@ export const EXERCISES = [
     id: 'sumo-jump-squat', name: 'Sumo-Sprungkniebeuge mit Kurzhantel', equip: ['kh'], muscles: 'Oberschenkel · Gesäß · Adduktoren', mode: 'reps',
     how: 'Breiter Stand, Zehen nach außen, eine Hantel senkrecht mit beiden Händen zwischen den Beinen. Tief in die Sumo-Hocke gehen, explosiv abspringen und weich wieder in der Hocke landen.',
     cues: ['Leichtes Gewicht wählen.', 'Knie zeigen nach außen.'],
-    props: [{ t: 'db', both: false }],
+    cam: 'front', props: [{ t: 'db', mid: true }], view: '-10 -20 120 120', seq: [0, 1, 2, 1], key: 2, dur: [1.2, 0.8, 0.8, 1.2],
     poses: [
-      { hp: [50, 68], tr: 0, a: [30, 90], a2: [70, 90], ab: 1, w: [50, 86], w2: [50, 86] },
-      { hp: [50, 46], tr: 0, a: [40, 85], a2: [60, 85], ab: 1, w: [50, 70], w2: [50, 70] },
+      { h: [50, 30], sL: [42, 41], sR: [58, 41], pL: [46, 68], pR: [54, 68], kL: [30, 70], kR: [70, 70], aL: [30, 90], aR: [70, 90], eL: [44, 54], wL: [49, 67], eR: [56, 54], wR: [51, 67] },
+      { via: true, h: [50, 12], sL: [42, 23], sR: [58, 23], pL: [46, 50], pR: [54, 50], kL: [37, 69], kR: [63, 69], aL: [31, 89], aR: [69, 89], eL: [44, 36], wL: [49, 49], eR: [56, 36], wR: [51, 49] },
+      { h: [50, -7], sL: [42, 4], sR: [58, 4], pL: [46, 31], pR: [54, 31], kL: [40, 51], kR: [60, 51], aL: [36, 70], aR: [64, 70], eL: [44, 17], wL: [49, 30], eR: [56, 17], wR: [51, 30] },
     ],
   },
   {
@@ -689,13 +696,13 @@ export const EXERCISES = [
 
   // Oberkörper
   {
-    id: 'seitheben', front: true, name: 'Seitheben', equip: ['kh'], muscles: 'Seitliche Schulter', mode: 'reps',
+    id: 'seitheben', name: 'Seitheben', equip: ['kh'], muscles: 'Seitliche Schulter', mode: 'reps',
     how: 'Aufrecht stehen, Hanteln seitlich neben dem Körper. Mit leicht gebeugten Ellbogen seitlich bis auf Schulterhöhe heben, kurz halten und langsam senken.',
     cues: ['Leichtes Gewicht, kein Schwung.', 'Schultern nicht hochziehen.'],
-    props: [{ t: 'db' }],
+    cam: 'front', props: [{ t: 'db' }],
     poses: [
-      { ...STAND, ua: 165, fa: 168, ua2: 195, fa2: 192 },
-      { ...STAND, ua: 88, fa: 95, ua2: 272, fa2: 265 },
+      { ...F_STAND, ...F_DOWN },
+      { ...F_STAND, eL: [28.5, 25], wL: [16, 27], eR: [71.5, 25], wR: [84, 27] },
     ],
   },
   {
@@ -898,13 +905,13 @@ export const EXERCISES = [
     poses: [{ ...STAND, ua: 172 }, { ...STAND, ua: 165, fa: 20 }],
   },
   {
-    id: 'bizepscurl-seitlich', front: true, name: 'Bizepscurl seitlich', equip: ['kh'], muscles: 'Bizeps', mode: 'reps',
+    id: 'bizepscurl-seitlich', name: 'Bizepscurl seitlich', equip: ['kh'], muscles: 'Bizeps', mode: 'reps',
     how: 'Aufrecht stehen, Arme leicht vom Körper abgespreizt, Handflächen zeigen nach vorn. Hanteln seitlich zur Schulter beugen und langsam ablassen.',
     cues: ['Ellbogen bleiben auf derselben Höhe.', 'Kein Schwung.'],
-    props: [{ t: 'db' }],
+    cam: 'front', props: [{ t: 'db' }],
     poses: [
-      { ...STAND, ua: 160, fa: 165, ua2: 200, fa2: 195 },
-      { ...STAND, ua: 160, fa: 20, ua2: 200, fa2: 340 },
+      { ...F_STAND, eL: [38, 36], wL: [34, 48], eR: [62, 36], wR: [66, 48] },
+      { ...F_STAND, eL: [38, 36], wL: [33, 24], eR: [62, 36], wR: [67, 24] },
     ],
   },
   {
