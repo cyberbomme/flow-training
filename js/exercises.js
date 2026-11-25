@@ -35,6 +35,9 @@ const T_LEGUP = { ...T_LIE, ...T_ARMS, kL: [47, 60], kR: [53, 60], aL: [48, 64],
 const T_KNEES = { ...T_LIE, ...T_ARMS, kL: [47, 65], kR: [53, 65], aL: [47, 76], aR: [53, 76], nose: 180 };
 const T_WALL = { h: [50, 54], sL: [39, 54], sR: [61, 54], pL: [44, 54], pR: [56, 54], eL: [27, 52], wL: [27, 39], eR: [63, 60], wR: [61, 66], nose: 0 };
 const T_WALL2 = { ...turned({ ...T_WALL, h: [51, 50], sL: [40, 50], sR: [62, 50], pL: [45, 50], pR: [57, 50], eR: [64, 56], wR: [62, 62] }, ['sL', 'sR', 'pL', 'pR', 'eR', 'wR'], [51, 50], 38), nose: 38 };
+const T_PLANK = { h: [50, 14], sL: [42, 27], sR: [58, 27], pL: [45, 54], pR: [55, 54], kL: [45, 73], kR: [55, 73], aL: [45, 92], aR: [55, 92], eL: [38, 27], wL: [36, 22], eR: [62, 27], wR: [64, 22], nose: 0 };
+const T_CRUNCH = { ...T_LIE, h: [50, 21], sL: [42, 32], sR: [58, 32], kL: [47, 65], kR: [53, 65], aL: [47, 76], aR: [53, 76], eL: [38, 42], wL: [47, 41], eR: [62, 42], wR: [53, 41] };
+const T_CRUNCH_R = { ...T_CRUNCH, h: [54, 27], sL: [46, 35], sR: [60, 40], eL: [56, 46], wL: [64, 57], eR: [67, 50], wR: [70, 62] };
 // Side Shuffle von vorn: c = Körpermitte, l/r = Füße, yl/yr = Höhe der Füße
 const shuffle = (c, l, r, yl = 90, yr = 90, via = true) => ({ via, h: [c, 25], sL: [c - 8, 36], sR: [c + 8, 36], pL: [c - 4, 62], pR: [c + 4, 62],
   kL: [(l + c - 4) / 2 - 5, (yl + 62) / 2], kR: [(r + c + 4) / 2 + 5, (yr + 62) / 2], aL: [l, yl], aR: [r, yr], eL: [c - 14, 47], wL: [c - 5, 42], eR: [c + 14, 47], wR: [c + 5, 42] });
@@ -1013,6 +1016,144 @@ export const EXERCISES = [
     ],
   },
 
+  // ── Aus zwei Core-Videos von MadFit (2026-11-25) ──────────
+  {
+    id: 'situp-in-out-twist', name: 'Sit-up, In & Out, Twist', equip: [], muscles: 'Bauch · Seitliche Rumpfmuskulatur · Hüftbeuger', mode: 'time',
+    how: 'Rückenlage, Füße aufgestellt, Hände an den Schläfen. Ganz aufrollen bis zum Sitz, Hände neben der Hüfte aufsetzen und die Füße abheben. Zweimal die Knie zur Brust ziehen und die Beine wieder nach vorn strecken. Dann die Hände lösen und viermal zur Seite drehen, im Wechsel rechts und links. Füße aufstellen und langsam abrollen.',
+    cues: ['Beim Drehen den Brustkorb mitnehmen, nicht nur die Arme.', 'Rücken lang, Schultern tief.', 'Leichter: Füße beim Drehen am Boden lassen.'],
+    seq: [0, 1, 2, 3, 2, 3, 4, 5, 4, 5, 1], key: 3, dur: [1.6, 1, 1, 1, 1, 1, 0.8, 0.8, 0.8, 1, 1.6],
+    poses: [
+      { hp: [50, 85], tr: 270, hd: 270, a: [78, 90], w: [13, 80], wb: 1 },
+      { hp: [50, 85], tr: 345, a: [78, 90], w: [42, 49], wb: 1 },
+      { hp: [50, 85], tr: 332, th: 25, sh: 120, w: [33, 88], wb: -1 },
+      { hp: [50, 85], tr: 320, th: 66, sh: 78, w: [31, 88], wb: -1 },
+      { hp: [50, 85], tr: 325, th: 50, sh: 108, w: [44, 80], wb: -1, w2: [49, 78], wb2: -1 },
+      { hp: [50, 85], tr: 325, th: 50, sh: 108, w: [57, 72], wb: -1, w2: [53, 77], wb2: -1 },
+    ],
+  },
+  {
+    id: 'beinsenken-kreuzen', name: 'Beinsenken mit Überkreuzen', equip: [], muscles: 'Bauch · Hüftbeuger', mode: 'time',
+    how: 'Rückenlage, Arme neben dem Körper, Beine senkrecht nach oben gestreckt. Die Beine langsam senken und dabei mehrmals überkreuzen, bis sie knapp über dem Boden sind. Auf dem Rückweg nach oben weiter überkreuzen. Das vordere Bein wechselt jedes Mal.',
+    cues: ['Unterer Rücken bleibt fest am Boden.', 'Nur so tief senken, wie der Rücken liegen bleibt.'],
+    seq: [0, 1, 2, 3, 4, 3, 2, 1], key: 4,
+    poses: [
+      { hp: [50, 85], tr: 270, hd: 270, th: 4, sh: 4, th2: 4, sh2: 4, ua: 95, fa: 92 },
+      { via: true, hp: [50, 85], tr: 270, hd: 270, th: 16, sh: 16, th2: 30, sh2: 30, ua: 95, fa: 92 },
+      { via: true, hp: [50, 85], tr: 270, hd: 270, th: 50, sh: 50, th2: 36, sh2: 36, ua: 95, fa: 92 },
+      { via: true, hp: [50, 85], tr: 270, hd: 270, th: 56, sh: 56, th2: 70, sh2: 70, ua: 95, fa: 92 },
+      { hp: [50, 85], tr: 270, hd: 270, th: 81, sh: 81, th2: 81, sh2: 81, ua: 95, fa: 92 },
+    ],
+  },
+  {
+    id: 'crunch-seitlich', name: 'Crunch im Seitenwechsel', equip: [], muscles: 'Bauch · Seitliche Rumpfmuskulatur', mode: 'time',
+    how: 'Rückenlage, Knie über der Hüfte gebeugt, Hände vor der Brust. Oberkörper einrollen und mit beiden Armen rechts an den Beinen vorbeigreifen. Zur Mitte zurücklösen und links vorbeigreifen, im Wechsel.',
+    cues: ['Beine bleiben ruhig über der Hüfte.', 'Unterer Rücken bleibt am Boden, Nacken locker.', 'Schwerer: Schulterblätter in der Mitte nicht ablegen.'],
+    cam: 'top', seq: [0, 1, 0, 2],
+    poses: [T_CRUNCH, T_CRUNCH_R, flipLR(T_CRUNCH_R)],
+  },
+  {
+    id: 'beinscheren-unterarm', name: 'Beinscheren gestützt', equip: [], muscles: 'Bauch · Hüftbeuger', mode: 'time',
+    how: 'Im Sitz nach hinten auf die Unterarme stützen. Ein Bein senkrecht nach oben strecken, das andere knapp über dem Boden halten. Die gestreckten Beine im Wechsel tauschen, ohne sie abzulegen.',
+    cues: ['Becken leicht einrollen, Bauch fest.', 'Brust offen, nicht in die Schultern sinken.'],
+    poses: [
+      { hp: [46, 85], tr: 300, hd: 330, th: 4, sh: 4, th2: 78, sh2: 78, ua: 182, fa: 92 },
+      { hp: [46, 85], tr: 300, hd: 330, th: 78, sh: 78, th2: 4, sh2: 4, ua: 182, fa: 92 },
+    ],
+  },
+  {
+    id: 'reverse-crunch-gestreckt', name: 'Reverse Crunch mit Strecken', equip: [], muscles: 'Bauch · Hüftbeuger', mode: 'time',
+    how: 'Rückenlage, Arme über dem Kopf, Beine gestreckt knapp über dem Boden. Knie zur Brust ziehen, dabei die Arme nach vorn neben den Körper führen und die Hüfte leicht vom Boden lösen. Langsam wieder lang werden, ohne die Füße abzulegen.',
+    cues: ['Unterer Rücken bleibt beim Strecken am Boden.', 'Hüfte mit dem Bauch einrollen, nicht mit Schwung.', 'Leichter: Beine beim Strecken höher halten.'],
+    view: '-6 -6 112 112',
+    poses: [
+      { hp: [58, 85], tr: 270, hd: 270, th: 83, sh: 83, ua: 276, fa: 276 },
+      { hp: [57, 79], tr: 258, hd: 270, th: 325, sh: 62, ua: 92, fa: 88 },
+    ],
+  },
+  {
+    id: 'crunch-knie-ziehen', name: 'Crunch mit Knie zur Brust', equip: [], muscles: 'Bauch · Hüftbeuger', mode: 'time',
+    how: 'Rückenlage, Oberkörper eingerollt, beide Knie angezogen. Ein Knie mit den Händen fassen, das andere Bein knapp über dem Boden strecken und den Oberkörper zweimal kurz zum Knie ziehen. Seite wechseln.',
+    cues: ['Schulterblätter bleiben vom Boden gelöst.', 'Aus dem Bauch einrollen, die Hände helfen nur.'],
+    seq: [0, 1, 2, 1], key: 1, alt: true,
+    poses: [
+      { hp: [52, 85], tr: 296, hd: 306, th: 2, sh: 100, th2: 2, sh2: 100, w: [51, 68], wb: -1, w2: [51, 68], wb2: -1 },
+      { hp: [52, 85], tr: 303, hd: 315, th: 336, sh: 100, th2: 82, sh2: 82, w: [47, 67], wb: -1, w2: [47, 67], wb2: -1 },
+      { via: true, hp: [52, 85], tr: 293, hd: 303, th: 346, sh: 100, th2: 82, sh2: 82, w: [49, 67], wb: -1, w2: [49, 67], wb2: -1 },
+    ],
+  },
+  {
+    id: 'bergsteiger-kreuz-seite', name: 'Bergsteiger Kreuz & Seite', equip: [], muscles: 'Rumpf · Seitliche Rumpfmuskulatur · Hüftbeuger', mode: 'time',
+    how: 'Hoher Liegestütz, Hände unter den Schultern. Rechtes Knie unter dem Körper zum linken Ellbogen ziehen und zurücksetzen, dann außen zum rechten Ellbogen. Danach das linke Knie zum rechten und zum linken Ellbogen, im Wechsel.',
+    cues: ['Schultern bleiben über den Händen.', 'Hüfte ruhig und tief, Bauch fest.'],
+    cam: 'top', seq: [0, 1, 0, 2, 0, 3, 0, 4], key: 2,
+    poses: [
+      T_PLANK,
+      { ...T_PLANK, kR: [42, 38], aR: [53, 51] },
+      { ...T_PLANK, kR: [67, 43], aR: [66, 59] },
+      { ...T_PLANK, kL: [58, 38], aL: [47, 51] },
+      { ...T_PLANK, kL: [33, 43], aL: [34, 59] },
+    ],
+  },
+  {
+    id: 'sitz-pulse', name: 'Bauch-Pulse im Sitz', equip: [], muscles: 'Bauch', mode: 'time',
+    how: 'Im Sitz Füße aufstellen, Arme nach vorn strecken. Oberkörper so weit zurücklehnen, bis der Bauch deutlich arbeitet. Dort in kleinen, schnellen Bewegungen vor und zurück pulsen.',
+    cues: ['Brust offen, Schultern tief.', 'Kleine Bewegung, die Spannung bleibt durchgehend.'],
+    poses: [
+      { hp: [42, 85], tr: 320, hd: 330, a: [76, 90], ua: 108, fa: 105 },
+      { hp: [42, 85], tr: 332, hd: 340, a: [76, 90], ua: 108, fa: 105 },
+    ],
+  },
+  {
+    id: 'scheren-crunch', name: 'Scheren-Crunch', equip: [], muscles: 'Bauch · Seitliche Rumpfmuskulatur · Hüftbeuger', mode: 'time',
+    how: 'Rückenlage, Oberkörper eingerollt, Hände an den Schläfen. Ein Bein senkrecht nach oben strecken, das andere knapp über dem Boden halten. Den gegenüberliegenden Ellbogen zum oberen Bein drehen. Beine und Drehung im Wechsel tauschen.',
+    cues: ['Unteres Bein so tief, wie der untere Rücken am Boden bleibt.', 'Nicht am Kopf ziehen.'],
+    poses: [
+      { hp: [52, 85], tr: 300, hd: 312, th: 2, sh: 2, th2: 81, sh2: 81, w: [20, 62], wb: 1, w2: [24, 62], wb2: 1 },
+      { hp: [52, 85], tr: 300, hd: 312, th: 81, sh: 81, th2: 2, sh2: 2, w: [24, 62], wb: 1, w2: [20, 62], wb2: 1 },
+    ],
+  },
+  {
+    id: 'seitstuetz-hueftsenken', name: 'Seitstütz mit Hüftsenken', equip: [], muscles: 'Seitliche Rumpfmuskulatur · Schultern', mode: 'time', side: true,
+    how: 'Seitlich auf eine Hand stützen, Hand unter der Schulter, freie Hand an den Hinterkopf. Hüfte langsam Richtung Boden senken und wieder anheben, bis der Körper eine Linie bildet. Nach der Zeit die Seite wechseln.',
+    cues: ['Schulter aktiv vom Ohr wegschieben.', 'Leichter: auf den Unterarm stützen oder den oberen Fuß vorn aufsetzen.'],
+    poses: [
+      { hp: [46.7, 74.1], tr: 66.6, a: [10, 90], a2: [10, 90], fd: 265, fd2: 265, w: [72.4, 90], ua2: 345, fa2: 123 },
+      { hp: [49.4, 85.5], tr: 39, a: [10, 90], a2: [10, 90], fd: 265, fd2: 265, w: [72.4, 90], ua2: 320, fa2: 98 },
+    ],
+  },
+  {
+    id: 'crunch-beinsenken', name: 'Crunch mit Beinsenken', equip: [], muscles: 'Bauch · Hüftbeuger', mode: 'time',
+    how: 'Rückenlage, Beine senkrecht nach oben gestreckt, Hände an den Schläfen, Schulterblätter leicht gelöst. Zweimal einrollen, dann die gestreckten Beine langsam senken und wieder nach oben führen.',
+    cues: ['Unterer Rücken bleibt am Boden, Bauchnabel nach innen.', 'Nur so tief senken, wie du die Spannung hältst.'],
+    seq: [0, 1, 0, 1, 0, 2], key: 2, dur: [0.6, 0.6, 0.6, 0.6, 1.4, 1.4],
+    poses: [
+      { hp: [54, 85], tr: 288, hd: 298, th: 3, sh: 3, w: [19, 70], wb: 1 },
+      { hp: [54, 85], tr: 305, hd: 318, th: 3, sh: 3, w: [24, 61], wb: 1 },
+      { hp: [54, 85], tr: 288, hd: 298, th: 72, sh: 72, w: [19, 70], wb: 1 },
+    ],
+  },
+  {
+    id: 'bicycle-zehen', name: 'Bicycle mit Zehen-Touch', equip: [], muscles: 'Bauch · Seitliche Rumpfmuskulatur · Hüftbeuger', mode: 'time', side: true,
+    how: 'Rückenlage, Hände an den Schläfen, ein Bein gestreckt knapp über dem Boden, das andere gebeugt. Knie anziehen und den gegenüberliegenden Ellbogen dazu drehen. Zurück, dann dasselbe Bein nach oben strecken und mit der gegenüberliegenden Hand zu den Zehen greifen. Beides im Wechsel, nach der Zeit die Seite wechseln.',
+    cues: ['Unterer Rücken bleibt am Boden.', 'Gestrecktes Bein ruhig halten.'],
+    seq: [0, 1, 0, 2], key: 2,
+    poses: [
+      { hp: [52, 85], tr: 280, hd: 285, th: 50, sh: 122, th2: 84, sh2: 84, w: [15, 76], wb: 1, w2: [15, 76], wb2: 1 },
+      { hp: [52, 85], tr: 304, hd: 318, th: 345, sh: 98, th2: 84, sh2: 84, w: [21, 61], wb: 1, w2: [25, 62], wb2: 1 },
+      { hp: [52, 85], tr: 306, hd: 318, th: 12, sh: 12, th2: 84, sh2: 84, w: [21, 61], wb: 1, ua2: 55, fa2: 52 },
+    ],
+  },
+  {
+    id: 'bicycle-sitzend', name: 'Bicycle im Sitz', equip: [], muscles: 'Bauch · Seitliche Rumpfmuskulatur · Hüftbeuger', mode: 'time',
+    how: 'Im Sitz zurücklehnen, Hände an den Schläfen, Füße knapp über dem Boden. Ein Knie anheben und den gegenüberliegenden Ellbogen dazu drehen. Absenken und die Seite wechseln.',
+    cues: ['Brust offen, Ellbogen nicht vor das Gesicht ziehen.', 'Zurückgelehnt bleiben, damit der Bauch durchgehend arbeitet.', 'Leichter: Füße kurz aufsetzen.'],
+    alt: true,
+    poses: [
+      { hp: [44, 85], tr: 325, hd: 335, th: 55, sh: 108, th2: 55, sh2: 108, w: [24, 53], wb: 1, w2: [24, 53], wb2: 1 },
+      { hp: [44, 85], tr: 334, hd: 345, th: 18, sh: 105, th2: 62, sh2: 104, w: [30, 51], wb: 1, w2: [34, 52], wb2: 1 },
+    ],
+  },
+
   // ── Dehnen ─────────────────────────────────────────────────
   // kind: 'stretch' = Dehnübung (gehalten, ohne Verlauf). pos = Ausgangslage für eine ruhige Reihenfolge
   // (stand → knie → bauch → sitz → ruecken). t = Zielmuskeln mit Gewicht, Schlüssel siehe STRETCH_TARGETS.
@@ -1260,6 +1401,8 @@ export const TEMPO = {
   'schulter-tippen': 1.5, 'plank-pull-through': 3, 'hollow-brustpresse': 2.5, 'schulterdruecken-kniend': 3, 'v-sit-schulterdruecken': 3,
   'around-the-world': 4, 'curl-arnold': 5, 'zottman-curl': 4, 'bizepscurl-seitlich': 3, 'curl-trizeps': 6, 'dead-bug': 3,
   'crunch-gestreckt': 2.5, 'beinheben-seitlich': 4, 'katze-kuh': 6, 'v-up': 3, 'trx-rudern': 3, 'trx-overhead-squat': 3.5, 'trx-curtsy': 3.5,
+  'situp-in-out-twist': 8, 'beinsenken-kreuzen': 5, 'crunch-seitlich': 3, 'beinscheren-unterarm': 2, 'reverse-crunch-gestreckt': 3.5, 'crunch-knie-ziehen': 2.5,
+  'bergsteiger-kreuz-seite': 6, 'sitz-pulse': 1, 'scheren-crunch': 2.5, 'seitstuetz-hueftsenken': 2.5, 'crunch-beinsenken': 5, 'bicycle-zehen': 4, 'bicycle-sitzend': 2,
 };
 
 // Muskelgruppen für Filter und Plan-Icons – automatisch aus der Muskel-Beschreibung abgeleitet,

@@ -170,6 +170,24 @@ export const TEMPLATES = [
       ss(3, 60, ex('trizeps-ueberkopf', 3, 12, 6), ex('seit-frontheben', 3, 10, 3)),
     ],
   },
+  // ── Nach zwei Core-Videos von MadFit (YouTube, 2026-11-25) ──
+  // Aufbau wie im Video: 2 Runden, 7 Übungen à 60 s (je Seite 30 s) und 30 s Abschluss, keine Pausen.
+  {
+    id: 'tpl-video-total-core', name: 'Total Core 15 Min',
+    note: 'Nach dem Video „15 Min Total Core/Ab Workout“ von MadFit. Zwei Runden ohne Pause, ohne Geräte. Wenn du sie brauchst, stell im Plan eine Pause nach der Runde ein.',
+    items: [
+      ss(2, 0, ex('situp-in-out-twist', 2, '60s'), ex('beinsenken-kreuzen', 2, '60s'), ex('crunch-seitlich', 2, '60s'), ex('beinscheren-unterarm', 2, '60s'),
+        ex('reverse-crunch-gestreckt', 2, '60s'), ex('crunch-knie-ziehen', 2, '60s'), ex('bergsteiger-kreuz-seite', 2, '60s'), ex('sitz-pulse', 2, '30s')),
+    ],
+  },
+  {
+    id: 'tpl-video-six-pack', name: 'Six Pack Core',
+    note: 'Nach dem Video „15 Min Intense Six Pack Workout“ von MadFit. Zwei Runden ohne Pause, ohne Geräte. Den Unterarmstütz am Ende der Runde kannst du auch als Pause nutzen.',
+    items: [
+      ss(2, 0, ex('scheren-crunch', 2, '60s'), ex('seitstuetz-hueftsenken', 2, '30s'), ex('crunch-beinsenken', 2, '60s'), ex('bicycle-zehen', 2, '30s'),
+        ex('reverse-crunch-gestreckt', 2, '60s'), ex('bicycle-sitzend', 2, '60s'), ex('crunch-seitlich', 2, '60s'), ex('unterarmstuetz', 2, '30s')),
+    ],
+  },
   // ── Dehnen (kind: 'stretch') ──
   {
     id: 'tpl-dehnen-ganz', name: 'Ganzkörper dehnen', kind: 'stretch',
